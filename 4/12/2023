@@ -1,0 +1,162 @@
+from cmu_graphics import * 
+import math 
+import random
+
+def onAppStart(app):
+    app.rows = 9
+    app.cols = 9
+    app.boardLeft = 50
+    app.boardTop = 50
+    app.boardWidth = 300
+    app.boardHeight = 300
+    app.cellBorderWidth = 2
+    app.mario = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\header-mario.png'''
+    app.toadette = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\mario-bros-toadette-super-mario-wiki-the-mario-encyclopedia-31 (1).png'''
+    app.yellowYoshi = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\latest.png'''
+    app.luigi = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\MPSS_Luigi (6).png'''
+    app.rosalina = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\Rosalina_Super_Mario_Party.png'''
+    app.startingTitle = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\image (6).png'''
+    app.characterPopUp = True
+    app.selection = None
+    getChosenBoard(app)
+
+def readFile(path):
+    with open(path, "rt") as f:
+        return f.read()
+app.easyBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-03.png.txt''')
+app.easyBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\easy-16.png.txt''')
+app.easyBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-22.png.txt''')
+app.easyBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-33.png.txt''')
+app.easyBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-42.png.txt''')
+
+def getChosenBoard(app):
+    index = random.randint(1, 5)
+    print(index)
+    if index == 1: 
+        makeInto2dList(app, app.easyBoard1) 
+    elif index == 2: 
+        makeInto2dList(app, app.easyBoard2) 
+    elif index == 3: 
+        makeInto2dList(app, app.easyBoard3)
+    elif index == 4: 
+        makeInto2dList(app, app.easyBoard4) 
+    elif index == 5: 
+        makeInto2dList(app, app.easyBoard5) 
+
+def makeInto2dList(app, givenBoard): 
+    app.board = [] 
+    for row in givenBoard.splitlines(): 
+        temp = [] 
+        for element in row.split(' '): 
+            temp.append(int(element))
+        app.board.append(temp)
+    print(app.board)
+
+# makeInto2dList(app, app.easyBoard1)
+
+def redrawAll(app):
+    drawBoard(app)
+    drawLine(150, 50, 150, 350, fill = 'darkGrey')
+    drawLine(250, 50, 250, 350, fill = 'darkGrey')
+    drawLine(50, 150, 350, 150, fill = 'darkGrey')
+    drawLine(50, 250, 350, 250, fill = 'darkGrey')
+    drawBoardBorder(app)
+    startingTitleWidth, startingTitleHeight = getImageSize(app.startingTitle)
+    drawImage(app.startingTitle, 0, 0, width=startingTitleWidth//3.1,
+    height=startingTitleHeight//3.1)
+    if app.characterPopUp:
+        pass
+        # rosalina
+        # drawRect(30, 280, 310, 100, fill='cyan', border='black')
+        # imageWidth, imageHeight = getImageSize(app.rosalina)
+        # drawImage(app.rosalina, 350, 320, width=imageWidth//2.5,f
+        # height=imageHeight//2.5, align='center')
+        
+        # luigi 
+        # drawRect(30, 280, 310, 100, fill='green', border='black')
+        # imageWidth, imageHeight = getImageSize(app.luigi)
+        # drawImage(app.luigi, 340, 320, width=imageWidth//6,
+        # height=imageHeight//6, align='center')
+        
+        # mario
+        # drawRect(30, 280, 310, 100, fill='red', border='black')
+        # imageWidth, imageHeight = getImageSize(app.mario)
+        # drawImage(app.mario, 330, 320, width=imageWidth//5,
+        # height=imageHeight//5, align='center')
+        
+        # toadette
+        # drawRect(30, 280, 310, 100, fill='pink', border='black')
+        # imageWidth, imageHeight = getImageSize(app.toadette)
+        # drawImage(app.toadette, 330, 315, width=imageWidth//10,
+        # height=imageHeight//10, align='center')
+        
+        # yellow yoshi
+        # drawRect(30, 280, 310, 100, fill='yellow', border='black')
+        # imageWidth, imageHeight = getImageSize(app.yellowYoshi)
+        # drawImage(app.yellowYoshi, 330, 320, width=imageWidth//4,
+        # height=imageHeight//4, align='center')
+
+def onMousePress(app, mouseX, mouseY):
+    selectedCell = getCell(app, mouseX, mouseY)
+    if selectedCell != None:
+        if selectedCell == app.selection:
+            app.selection = None
+        else:
+            app.selection = selectedCell
+    print(app.selection)
+
+
+def getCell(app, x, y):
+    dx = x - app.boardLeft
+    dy = y - app.boardTop
+    cellWidth, cellHeight = getCellSize(app)
+    row = math.floor(dy / cellHeight)
+    col = math.floor(dx / cellWidth)
+    if (0 <= row < app.rows) and (0 <= col < app.cols):
+        return (row, col)
+    else:
+        return None
+
+
+def drawBoard(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            drawCell(app, row, col)
+
+def drawBoardBorder(app):
+  # draw the board outline (with double-thickness):
+  drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
+           fill=None, border='black',
+           borderWidth=2*app.cellBorderWidth)
+
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.board[row][col] == 0: 
+        color = 'cyan' if (row, col) == app.selection else None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=color, border='black',
+                borderWidth=app.cellBorderWidth)
+    else: 
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=rgb(58, 58, 58), border='black',
+                borderWidth=app.cellBorderWidth)
+    if app.board[row][col] != 0: 
+        drawLabel(app.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'white', align='center')
+
+def getCellLeftTop(app, row, col):
+    cellWidth, cellHeight = getCellSize(app)
+    cellLeft = app.boardLeft + col * cellWidth
+    cellTop = app.boardTop + row * cellHeight
+    return (cellLeft, cellTop)
+
+def getCellSize(app):
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    return (cellWidth, cellHeight)
+
+
+def main():
+    runApp()
+
+main()
