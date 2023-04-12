@@ -52,8 +52,6 @@ def makeInto2dList(app, givenBoard):
         app.board.append(temp)
     print(app.board)
 
-# makeInto2dList(app, app.easyBoard1)
-
 def redrawAll(app):
     drawBoard(app)
     drawLine(150, 50, 150, 350, fill = 'darkGrey')
