@@ -1,0 +1,388 @@
+from cmu_graphics import * 
+import math 
+import random
+
+def onAppStart(app):
+    app.rows = 9
+    app.cols = 9
+    app.boardLeft = 50
+    app.boardTop = 50
+    app.boardWidth = 300
+    app.boardHeight = 300
+    app.cellBorderWidth = 2
+    # FOR THE MARIO THEME COMPONENTS
+    app.mario = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\header-mario.png'''
+    app.toadette = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\mario-bros-toadette-super-mario-wiki-the-mario-encyclopedia-31 (1).png'''
+    app.yellowYoshi = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\latest.png'''
+    app.luigi = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\MPSS_Luigi (6).png'''
+    app.rosalina = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\Rosalina_Super_Mario_Party.png'''
+    app.rosalinaProfile = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\rosalinaprofile.png'''
+    app.startingTitle = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\image (6).png'''
+    app.marioLogoPart1 = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\de1c665041c2788946fe94eb60b853d5.png'''
+    app.marioLogoPart2 = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\fb8b657a9a940a9575f81ba8b208e017.png'''
+    app.screen = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\desktop-wallpaper-mario-bros-backgrounds-group-mario-background-thumbnail.jpg'''
+    app.directionsBackground = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\image (1).png'''
+    app.startButton = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\fe9eebde5e19b66192281164142359e4_w200.gif'''
+    app.characterPopUp = True
+    app.selection = None
+    getChosenBoard(app)
+    app.currentGuess = None
+    app.enterValue = False
+    app.numberOfIncorrect = 0
+    app.gameHasStarted = False
+    app.characterSelectScreen = False 
+    app.directionsPartOne = False 
+    app.directionsPartTwo = False 
+    app.playScreen = True
+
+def readFile(path):
+    with open(path, "rt") as f:
+        return f.read()
+app.easyBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-03.png.txt''')
+app.easyBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\easy-16.png.txt''')
+app.easyBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-22.png.txt''')
+app.easyBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-33.png.txt''')
+app.easyBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\easy-42.png.txt''')
+app.mediumBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\medium-06.png.txt''')
+app.mediumBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\medium-20.png.txt''')
+app.mediumBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\medium-16.png.txt''')
+app.mediumBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\medium-34.png.txt''') 
+app.mediumBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\medium-49.png.txt''') 
+app.hardBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\hard-05.png.txt''')
+app.hardBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\hard-18.png.txt''')
+app.hardBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\hard-26.png.txt''')
+app.hardBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\hard-33.png.txt''')
+app.hardBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\hard-43.png.txt''')
+app.expertBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\expert-07.png.txt''')
+app.expertBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\expert-18.png.txt''')
+app.expertBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\expert-22.png.txt''')
+app.expertBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\expert-13.png.txt''')
+app.expertBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\expert-01.png.txt''')
+app.evilBoard1 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\evil-04.png.txt''')
+app.evilBoard2 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\evil-09.png.txt''')
+app.evilBoard3 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\evil-16.png.txt''')
+app.evilBoard4 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\evil-22.png.txt''')
+app.evilBoard5 = readFile('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\tp-starter-files\\boards\\evil-25.png.txt''')
+
+def loadBoardPaths(filters):
+        boardPaths = [ ]
+        for filename in os.listdir(f'boards/'):
+            if filename.endswith('.txt'):
+                if hasFilters(filename, filters):
+                    boardPaths.append(f'boards/{filename}')
+        return boardPaths
+
+def hasFilters(filename, filters=None):
+    if filters == None: return True
+    for filter in filters:
+        if filter not in filename:
+            return False
+    return True
+
+def getChosenBoard(app):
+    index = random.randint(1, 5)
+    if index == 1: 
+        makeInto2dList(app, app.easyBoard1) 
+    elif index == 2: 
+        makeInto2dList(app, app.easyBoard2) 
+    elif index == 3: 
+        makeInto2dList(app, app.easyBoard3)
+    elif index == 4: 
+        makeInto2dList(app, app.easyBoard4) 
+    elif index == 5: 
+        makeInto2dList(app, app.easyBoard5) 
+
+def makeInto2dList(app, givenBoard): 
+    app.board = [] 
+    for row in givenBoard.splitlines(): 
+        temp = [] 
+        for element in row.split(' '): 
+            temp.append(int(element))
+        app.board.append(temp)
+
+def redrawAll(app):
+    if app.gameHasStarted:
+        drawBoard(app)
+        drawLine(150, 50, 150, 350, fill = 'darkGrey')
+        drawLine(250, 50, 250, 350, fill = 'darkGrey')
+        drawLine(50, 150, 350, 150, fill = 'darkGrey')
+        drawLine(50, 250, 350, 250, fill = 'darkGrey')
+        drawBoardBorder(app)
+    if  app.playScreen:
+        imageWidth, imageHeight = getImageSize(app.screen)
+        drawImage(app.screen, 0, 0, width=imageWidth//0.8,
+        height=imageHeight//0.6)
+
+        imageWidth, imageHeight = getImageSize(app.marioLogoPart1)
+        drawImage(app.marioLogoPart1, 200, 25, width = imageWidth//1.5, 
+                  height = imageHeight//1.5, align = 'center')
+        
+        imageWidth, imageHeight = getImageSize(app.marioLogoPart2)
+        drawImage(app.marioLogoPart2, 200, 75, width = imageWidth//2, 
+                  height = imageHeight//2, align = 'center')
+
+        imageWidth, imageHeight = getImageSize(app.startButton)
+        drawImage(app.startButton, 200, 225, width=imageWidth//1.25,
+        height=imageHeight//1.25, align = 'center')
+
+    if app.directionsPartOne:
+        imageWidth, imageHeight = getImageSize(app.directionsBackground)
+        drawImage(app.directionsBackground, 0, 0, width=imageWidth,
+        height=imageHeight)
+
+        drawLabel('DIRECTIONS', 200, 30, fill = 'white', size = 16, bold = True)
+        drawLabel('Welcome to Sudoku! Wait…not JUST Sudoku…MARIO SUDOKU!', 200, 55, size = 12, fill = 'white', align = 'center')
+        drawLabel('Play one of the most popular logic games (minus the math)', 200, 75, size = 12, fill = 'white', align = 'center')
+        drawLabel('set in the world of Mario.', 200, 90, size = 12, fill = 'white', align = 'center')
+        drawLabel('In case you forgot, here are the basic rules of Sudoku:', 200, 125, size = 12, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('1. Each board is 9 x 9 cells, with a few of the cells already filled in (how ', 15, 145, size = 12, fill = 'white', align = 'left')
+        drawLabel('many pre-filled cells depends on the difficulty you choose).', 15, 165, size = 12, fill = 'white', align = 'left')
+        drawLabel('2. Each line, vertically and horizontally, must be filled in with numbers', 15, 185, size = 12, fill = 'white', align = 'left')
+        drawLabel('from 1-9, and you cannot repeat numbers in the same line!', 15, 205, size = 12, fill = 'white', align = 'left')
+        drawLabel('3. There are also nine 3 x 3 blocks marked on the board. Each block', 15, 225, size = 12, fill = 'white', align = 'left')
+        drawLabel('cannot contain repeats either.', 15, 245, size = 12, fill = 'white', align = 'left')
+        drawLabel('Press n to continue to the next page of directions!', 15, 265, size = 12, fill = 'white', align = 'left')
+    if app.directionsPartTwo: 
+        imageWidth, imageHeight = getImageSize(app.directionsBackground)
+        drawImage(app.directionsBackground, 0, 0, width=imageWidth,
+        height=imageHeight) 
+
+        drawLabel('To spice things up, us evil game makers (who want you to suffer,', 200, 30, size = 12, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('but also have fun!) have added some additional rules:', 200, 50, size = 12, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('1. To start, choose a difficulty: easy, medium, hard, expert, and evil.', 15, 75, size = 12, fill = 'white', align = 'left')
+        drawLabel('Based on the difficulty, you’ll be given a starter board with more or less', 15, 95, size = 12, fill = 'white', align = 'left')
+        drawLabel('cells already filled in for you.', 15, 115, size = 12, fill = 'white', align = 'left')
+        drawLabel('2. Choose a character to play as: Mario, Luigi, Rosalina, Toadette, or', 15, 135, size = 12, fill = 'white', align = 'left')
+        drawLabel('Yellow Yoshi. It’s your job to keep their health bar up: every time', 15, 155, size = 12, fill = 'white', align = 'left')
+        drawLabel('you enter an incorrect value in a cell, a goomba will cause their health', 15, 175, size = 12, fill = 'white', align = 'left')
+        drawLabel('bar to decrease. Once the health bar hits 0, GAME OVER!', 15, 195, size = 12, fill = 'white', align = 'left')
+        drawLabel('3. As you enter values correctly in cells, you will earn coins. Pop open', 15, 215, size = 12, fill = 'white', align = 'left')
+        drawLabel('the shop during the game to use your coins to buy hints, extra undos,', 15, 235, size = 12, fill = 'white', align = 'left')
+        drawLabel('and mystery boxes (buy one to find out what they contain)! If you enter', 15, 255, size = 12, fill = 'white', align = 'left')
+        drawLabel('values incorrectly, however, the cells will turn red and you can use one', 15, 275, size = 12, fill = 'white', align = 'left')
+        drawLabel('of your undos to try again. If you run out of undos, GAME OVER!', 15, 295, size = 12, fill = 'white', align = 'left')
+        drawLabel('4. You will be fighting a final boss as you play through an evil', 15, 315, size = 12, fill = 'white', align = 'left')
+        drawLabel('board, and if you can successfully finish it, you can call yourself', 15, 335, size = 12, fill = 'white', align = 'left')
+        drawLabel('a Sudoku master!', 15, 355, size = 12, fill = 'white', align = 'left')
+        drawLabel('That’s all for now. Good luck!', 200, 375, size = 12, fill = 'white', align = 'center', bold = True, italic = True)
+    if app.characterSelectScreen:
+        startingTitleWidth, startingTitleHeight = getImageSize(app.startingTitle)
+        drawImage(app.startingTitle, 0, 0, width=startingTitleWidth//3.1,
+        height=startingTitleHeight//3.1)
+        imageWidth, imageHeight = getImageSize(app.rosalinaProfile)
+        drawImage(app.rosalinaProfile, 80, 200, width=imageWidth//6,
+        height=imageHeight//6)
+        # drawRect(90, 200, 65, 100, border = 'black', fill = None)
+        # drawLabel('Rosalina', 120, 310, size = 12, bold = True)
+        # drawRect(10, 285, 65, 100, border = 'black', fill = None)
+        # drawRect(170, 285, 65, 100, border = 'black', fill = None)
+        # drawRect(250, 200, 65, 100, border = 'black', fill = None)
+        # drawRect(330, 285, 65, 100, border = 'black', fill = None)
+
+    #     luigi 
+    #     drawRect(30, 280, 310, 100, fill='green', border='black')
+    #     imageWidth, imageHeight = getImageSize(app.luigi)
+    #     drawImage(app.luigi, 340, 320, width=imageWidth//6,
+    #     height=imageHeight//6, align='center')
+        
+    #     mario
+    #     drawRect(30, 280, 310, 100, fill='red', border='black')
+    #     imageWidth, imageHeight = getImageSize(app.mario)
+    #     drawImage(app.mario, 330, 320, width=imageWidth//5,
+    #     height=imageHeight//5, align='center')
+        
+    #     toadette
+    #     drawRect(30, 280, 310, 100, fill='pink', border='black')
+    #     imageWidth, imageHeight = getImageSize(app.toadette)
+    #     drawImage(app.toadette, 330, 315, width=imageWidth//10,
+    #     height=imageHeight//10, align='center')
+        
+    #     yellow yoshi
+    #     drawRect(30, 280, 310, 100, fill='yellow', border='black')
+    #     imageWidth, imageHeight = getImageSize(app.yellowYoshi)
+    #     drawImage(app.yellowYoshi, 330, 325, width=imageWidth//4,
+    #     height=imageHeight//4, align='center')
+
+    if app.characterPopUp:
+        pass
+        # rosalina
+        # drawRect(30, 280, 310, 100, fill='cyan', border='black')
+        # imageWidth, imageHeight = getImageSize(app.rosalina)
+        # drawImage(app.rosalina, 350, 320, width=imageWidth//2.5,f
+        # height=imageHeight//2.5, align='center')
+        
+        # luigi 
+        # drawRect(30, 280, 310, 100, fill='green', border='black')
+        # imageWidth, imageHeight = getImageSize(app.luigi)
+        # drawImage(app.luigi, 340, 320, width=imageWidth//6,
+        # height=imageHeight//6, align='center')
+        
+        # mario
+        # drawRect(30, 280, 310, 100, fill='red', border='black')
+        # imageWidth, imageHeight = getImageSize(app.mario)
+        # drawImage(app.mario, 330, 320, width=imageWidth//5,
+        # height=imageHeight//5, align='center')
+        
+        # toadette
+        # drawRect(30, 280, 310, 100, fill='pink', border='black')
+        # imageWidth, imageHeight = getImageSize(app.toadette)
+        # drawImage(app.toadette, 330, 315, width=imageWidth//10,
+        # height=imageHeight//10, align='center')
+        
+        # yellow yoshi
+        # drawRect(30, 280, 310, 100, fill='yellow', border='black')
+        # imageWidth, imageHeight = getImageSize(app.yellowYoshi)
+        # drawImage(app.yellowYoshi, 330, 325, width=imageWidth//4,
+        # height=imageHeight//4, align='center')
+
+def onMousePress(app, mouseX, mouseY):
+    if app.gameHasStarted: 
+        if app.enterValue == False:
+            selectedCell = getCell(app, mouseX, mouseY)
+            if selectedCell != None:
+                if selectedCell == app.selection:
+                    app.selection = None
+                else:
+                    app.selection = selectedCell
+            app.currentGuess = None
+    else:
+        if (120 <= mouseX <= 280 and 
+            165 <= mouseY <= 285):  
+            app.directionsPartOne = True 
+            app.playScreen = False
+        if app.characterSelectScreen: 
+            app.gameHasStarted = True 
+            app.characterSelectScreen = False
+            app.directionsPartOne = False
+            app.directionsPartTwo = False
+
+def onKeyPress(app, key):
+    app.enterValue = True
+    if app.gameHasStarted: 
+        if app.selection != None:
+            if key != '0' and key.isdigit() and key != 'enter' and key != 'backspace': 
+                app.currentGuess = int(key)
+            if key == 'backspace': 
+                app.currentGuess = None
+            if key == 'enter' and app.currentGuess != None:
+                app.board[app.selection[0]][app.selection[1]] = app.currentGuess
+                if not isLegalSudoku(app.board):
+                    # KEEP TRACK OF WHAT HAPPENS WHEN THEY GET SMTH WRONG
+                    app.board[app.selection[0]][app.selection[1]] = 0
+                    app.numberOfIncorrect += 1
+                    print(app.numberOfIncorrect)
+                app.enterValue = False
+    else: 
+        if app.directionsPartOne: 
+            if key == 'n': 
+                app.directionsPartTwo = True
+                app.directionsPartOne = False 
+        if app.directionsPartTwo: 
+            if key == 'c': 
+                app.characterSelectScreen = True
+                app.directionsPartOne = False
+                app.directionsPartTwo = False 
+
+def areLegalValues(L): 
+    seen = [] 
+    for i in range(len(L)): 
+        if (type(L[i])) != int:
+            return False 
+        if L[i] < 0 or L[i] > len(L): 
+            return False 
+        if L[i] != 0 and L[i] in seen: 
+            return False 
+        seen.append(L[i])
+    return True
+ 
+def isLegalRow(grid, row): 
+    return areLegalValues(grid[row])
+
+def isLegalCol(grid, col): 
+    rows = len(grid)
+    values = [grid[row][col] for row in range(rows)]
+    return areLegalValues(values)
+    
+def isLegalBlock(grid, block): 
+    blockSize = rounded(len(grid)**0.5)
+    startRow = block//blockSize * blockSize
+    startCol = block % blockSize * blockSize
+    values = [] 
+    for drow in range(blockSize): 
+        for dcol in range(blockSize): 
+            row, col = startRow + drow, startCol + dcol 
+            values.append(grid[row][col])
+    return areLegalValues(values)
+    
+def isLegalSudoku(grid):
+    rows, cols = len(grid), len(grid[0])
+    # if rows != 4 and rows != 9: 
+    #     return False 
+    # if rows != cols: 
+    #     return False 
+    for row in range(rows): 
+        if not isLegalRow(grid, row): 
+            return False 
+    for col in range(cols): 
+        if not isLegalCol(grid, col): 
+            return False
+    blocks = rows 
+    for block in range(blocks): 
+        if not isLegalBlock(grid, block): 
+            return False 
+    return True
+
+def getCell(app, x, y):
+    dx = x - app.boardLeft
+    dy = y - app.boardTop
+    cellWidth, cellHeight = getCellSize(app)
+    row = math.floor(dy / cellHeight)
+    col = math.floor(dx / cellWidth)
+    if (0 <= row < app.rows) and (0 <= col < app.cols):
+        return (row, col)
+    else:
+        return None
+
+def drawBoard(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            drawCell(app, row, col)
+
+def drawBoardBorder(app):
+  # draw the board outline (with double-thickness):
+  drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
+           fill=None, border='black',
+           borderWidth=2*app.cellBorderWidth)
+
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.board[row][col] == 0: 
+        color = 'cyan' if (row, col) == app.selection else None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=color, border='black',
+                borderWidth=app.cellBorderWidth)
+    else: 
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=rgb(58, 58, 58), border='black',
+                borderWidth=app.cellBorderWidth)
+    if app.board[row][col] != 0: 
+        drawLabel(app.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'white', align='center')
+    if (row, col) == app.selection and app.currentGuess != None and app.board[row][col] == 0:
+        drawLabel(app.currentGuess, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'black', align='center')
+
+def getCellLeftTop(app, row, col):
+    cellWidth, cellHeight = getCellSize(app)
+    cellLeft = app.boardLeft + col * cellWidth
+    cellTop = app.boardTop + row * cellHeight
+    return (cellLeft, cellTop)
+
+def getCellSize(app):
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    return (cellWidth, cellHeight)
+
+def main():
+    runApp()
+
+main()
