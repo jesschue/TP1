@@ -11,6 +11,7 @@ def onAppStart(app):
     app.boardHeight = 300
     app.cellBorderWidth = 2
     # FOR THE MARIO IMAGES
+    # characters
     app.mario = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\header-mario.png'''
     app.marioProfile = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\marioprofile.png'''
     app.toadette = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\mario-bros-toadette-super-mario-wiki-the-mario-encyclopedia-31 (1).png'''
@@ -21,13 +22,17 @@ def onAppStart(app):
     app.luigiProfile = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\luigiprofile.png'''
     app.rosalina = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\Rosalina_Super_Mario_Party.png'''
     app.rosalinaProfile = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\rosalinaprofile.png'''
+    # logos 
     app.startingTitle = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\image (6).png'''
     app.marioLogoPart1 = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\de1c665041c2788946fe94eb60b853d5.png'''
     app.marioLogoPart2 = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\fb8b657a9a940a9575f81ba8b208e017.png'''
     app.chooseDifficultyLevelPartOne = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\e400ad824bb727f461da80341dd0541e.png'''
-    app.screen = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\desktop-wallpaper-mario-bros-backgrounds-group-mario-background-thumbnail.jpg'''
+    app.chooseDifficultyLevelPartTwo = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\b919a24c04208dc5b067d9d5f4d3e55c.png'''
+    app.startButton = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\162cd9b350a6582.png'''
+    # backgrounds
+    app.playScreenBackground = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\desktop-wallpaper-mario-bros-backgrounds-group-mario-background-thumbnail.jpg'''
     app.directionsBackground = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\image (1).png'''
-    app.startButton = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\fe9eebde5e19b66192281164142359e4_w200.gif'''
+    app.difficultyBackground = '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\image.png'''
     # FOR KEEPING TRACK OF WHICH SCREEN & OTHER GAME COMPONENTS
     app.characterPopUp = True
     app.selection = None
@@ -40,6 +45,7 @@ def onAppStart(app):
     app.directionsPartOne = False 
     app.directionsPartTwo = False 
     app.playScreen = True
+    app.chosenCharacter = None 
     getChosenBoard(app)
 
 def readFile(path):
@@ -116,8 +122,8 @@ def redrawAll(app):
         drawLine(50, 250, 350, 250, fill = 'darkGrey')
         drawBoardBorder(app)
     if  app.playScreen:
-        imageWidth, imageHeight = getImageSize(app.screen)
-        drawImage(app.screen, 0, 0, width=imageWidth//0.8,
+        imageWidth, imageHeight = getImageSize(app.playScreenBackground)
+        drawImage(app.playScreenBackground, 0, 0, width=imageWidth//0.8,
         height=imageHeight//0.6)
 
         imageWidth, imageHeight = getImageSize(app.marioLogoPart1)
@@ -193,10 +199,25 @@ def redrawAll(app):
         drawImage(app.luigiProfile, 300, 300, width=imageWidth//6,
         height=imageHeight//6)
     if app.chooseDifficultyScreen: 
+        imageWidth, imageHeight = getImageSize(app.difficultyBackground)
+        drawImage(app.difficultyBackground, 0, 0, width=imageWidth//2,
+        height=imageHeight//1.5)
         imageWidth, imageHeight = getImageSize(app.chooseDifficultyLevelPartOne)
-        drawImage(app.chooseDifficultyLevelPartOne, 0, 0, width=imageWidth//6,
-        height=imageHeight//6)
-
+        drawImage(app.chooseDifficultyLevelPartOne, 200, 25, width=imageWidth//2,
+        height=imageHeight//2, align = 'center')
+        imageWidth, imageHeight = getImageSize(app.chooseDifficultyLevelPartTwo)
+        drawImage(app.chooseDifficultyLevelPartTwo, 200, 75, width=imageWidth//2,
+        height=imageHeight//2, align = 'center')
+        drawRect(40, 125, 150, 75, fill = 'black')
+        drawLabel('EASY', 115, 162, fill = 'white', size = 30, align = 'center')
+        drawRect(210, 125, 150, 75, fill = 'black')
+        drawLabel('MEDIUM', 285, 162, fill = 'white', size = 30, align = 'center')
+        drawRect(40, 215, 150, 75, fill = 'black')
+        drawLabel('HARD', 115, 250, fill = 'white', size = 30, align = 'center')
+        drawRect(210, 215, 150, 75, fill = 'black')
+        drawLabel('EXPERT', 285, 250, fill = 'white', size = 30, align = 'center')
+        drawRect(127, 305, 150, 75, fill = 'black')
+        drawLabel('EVIL', 205, 340, fill = 'white', size = 30, align = 'center')
     if app.characterPopUp:
         pass
         # rosalina
@@ -240,10 +261,11 @@ def onMousePress(app, mouseX, mouseY):
                     app.selection = selectedCell
             app.currentGuess = None
     else:
-        if (120 <= mouseX <= 280 and 
-            165 <= mouseY <= 285):  
-            app.directionsPartOne = True 
-            app.playScreen = False
+        if app.playScreen: 
+            if (120 <= mouseX <= 280 and 
+                165 <= mouseY <= 285):  
+                app.directionsPartOne = True 
+                app.playScreen = False
         if app.chooseDifficultyScreen: 
             app.gameHasStarted = True 
             app.chooseDifficultyScreen = False 
@@ -281,6 +303,9 @@ def onKeyPress(app, key):
             if key == 'd': 
                 app.chooseDifficultyScreen = True 
                 app.characterSelectScreen = False 
+                app.directionsPartOne = False 
+                app.directionsPartTwo = False
+
 def areLegalValues(L): 
     seen = [] 
     for i in range(len(L)): 
