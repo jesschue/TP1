@@ -2,10 +2,11 @@ from cmu_graphics import *
 
 class State:
 
-    def __init__(self, board, legals, notLegals): # legals is going to be a huge list
+    def __init__(self, board, legals, notLegals, selection):
         self.board = board
         self.legals = legals
         self.notLegals = notLegals
+        self.selection = selection
         rows, cols = len(self.board), len(self.board[0])
         for row in range(rows):
             for col in range(cols):
@@ -28,18 +29,29 @@ class State:
         print(f'self.notLegals: {self.notLegals}')
         print(f'self.legals: {self.legals}')
                     
-    def set(self, row, col, value):
-        self.board[row][col] = value
+    # def set(self, row, col, value):
+    #     self.board[row][col] = value
 
     def ban(self, row, col, value):
-        self.legals[row].remove(value)
-        for row in self.legals:
-            self.legals[row][col].remove(value)
-        
-        blockList = getBlockRegion(row, col)
+        # take out of self.legals and put into self.notLegals
+        tempRow = self.getRowRegion(row)
+        currIndex = None
+        for index in range(len(tempRow[1])):
+            if tempRow[1][index] == self.selection:
+                currIndex = index
+        currZeroesIndexes = []
+        for index in range(len(tempRow[0])):
+            if index != currIndex:
+                if tempRow[0][index] == 0:
+                    currZeroesIndexes.append(index)
+        tempCol = self.getColRegion(col)
+        tempBlock = self.getBlockRegion(row, col)
 
     def unban(self, row, col, value):
-        pass
+        # put into self.legals and take out of self.notLegals
+        tempRow = self.getRowRegion(row)
+        tempCol = self.getColRegion(col)
+        tempBlock = self.getBlockRegion(row, col)
 
     def getRowRegion(self, row):
         rows, cols = len(self.board), len(self.board[0])
@@ -111,7 +123,7 @@ def onAppStart(app):
     for row in range(9):
         for num in range(9):
             app.notLegals[row].append(set())
-    state = State(app.board, app.legals, app.notLegals)
+    state = State(app.board, app.legals, app.notLegals, app.selection)
 
 def redrawAll(app):
     pass
