@@ -1,6 +1,14 @@
 from cmu_graphics import * 
 import math 
 import random
+import os
+
+# CITATIONS 
+# start button: https://pixelartmaker.com/art/54b5ab9b34da8a3
+# directions page background: https://www.motionelements.com/stock-video-9212534-super-mario-bros-platform-game-on-a-green-screen-background
+# starting screen background: https://www.pxfuel.com/en/desktop-wallpaper-gdwza
+# blue background with clouds: https://dribbble.com/shots/12294406-Super-Mario-Background
+# luigi profile: https://mariopartylegacy.com/characters/luigi/
 
 class State:
 
@@ -8,7 +16,7 @@ class State:
         self.board = board
         self.legals = legals
         self.notLegals = notLegals
-        self.selection = selection
+        self.selection = (0, 0)
         rows, cols = len(self.board), len(self.board[0])
         for row in range(rows):
             for col in range(cols):
@@ -28,8 +36,6 @@ class State:
                     for value in tempBlock[0]:
                         if value != 0:
                             self.notLegals[row][col].add(value)
-        print(f'self.notLegals: {self.notLegals}')
-        print(f'self.legals: {self.legals}')
                     
     # def set(self, row, col, value):
     #     self.board[row][col] = value
@@ -37,7 +43,6 @@ class State:
     def ban(self, row, col, value):
         # take out of self.legals and put into self.notLegals
         tempRow = self.getRowRegion(row)
-        print(tempRow)
         currIndex = None
         for index in range(len(tempRow[1])):
             if tempRow[1][index] == self.selection:
@@ -47,7 +52,6 @@ class State:
             if index != currIndex:
                 if tempRow[0][index] == 0:
                     currZeroesIndexes.add(tempRow[1][index])
-        print(currZeroesIndexes)
 
         tempCol = self.getColRegion(col)
         for index in range(len(tempCol[1])):
@@ -57,7 +61,6 @@ class State:
             if index != currIndex:
                 if tempCol[0][index] == 0:
                     currZeroesIndexes.add(tempCol[1][index])
-        print(currZeroesIndexes)
 
         tempBlock = self.getBlockRegion(row, col)
         for index in range(len(tempBlock[1])):
@@ -70,7 +73,8 @@ class State:
         print(currZeroesIndexes)
         
         for location in currZeroesIndexes:
-            self.legals[location[0]][location[1]].remove(value)
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
             self.notLegals[location[0]][location[1]].add(value)
 
     def unban(self, row, col, value):
@@ -104,6 +108,8 @@ class State:
                 if tempBlock[0][index] == 0:
                     currZeroesIndexes.add(tempBlock[1][index])
         
+        print(currZeroesIndexes)
+
         for location in currZeroesIndexes:
             self.legals[location[0]][location[1]].add(value)
             self.notLegals[location[0]][location[1]].remove(value)
@@ -112,9 +118,8 @@ class State:
         rows, cols = len(self.board), len(self.board[0])
         valuesList = self.board[row]
         coordsList = []
-        for row in range(rows):
-            for col in range(cols):
-                coordsList.append((row, col))
+        for col in range(cols):
+            coordsList.append((row, col))
         return [valuesList, coordsList]
 
     def getColRegion(self, col):
@@ -158,7 +163,6 @@ class State:
         else:
             blockNum = rowNew + colNew * 3
         return blockNum
-
 
 def onAppStart(app):
     app.rows = 9
@@ -214,7 +218,7 @@ def onAppStart(app):
     for row in range(rows):
         for num in range(9):
             app.notLegals[row].append(set())
-    app.state = State(app.board, app.legals, app.notLegals, app.selection)
+    app.state = State(app.board, app.legals, app.notLegals, app.selection) 
 
 def readFile(path):
     with open(path, "rt") as f:
@@ -550,7 +554,7 @@ def getCell(app, x, y):
 def drawBoard(app):
     for row in range(app.rows):
         for col in range(app.cols):
-            drawCell(app, row, col)
+            drawCell(app, row, col)  
 
 def drawBoardBorder(app):
   # draw the board outline (with double-thickness):
@@ -572,8 +576,29 @@ def drawCell(app, row, col):
                 borderWidth=app.cellBorderWidth)
     if app.board[row][col] != 0: 
         drawLabel(app.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'white', align='center')
+    else: 
+        for num in app.state.legals[row][col]:
+            if num == 1:
+                drawLabel('1', cellLeft + 6, cellTop + 7, size = 6)
+            elif num == 2:
+                drawLabel('2', cellLeft + 16, cellTop + 7, size = 6)
+            elif num == 3:
+                drawLabel('3', cellLeft + 25, cellTop + 7, size = 6)
+            elif num == 4:
+                drawLabel('4', cellLeft + 6, cellTop + 15, size = 6)
+            elif num == 5:
+                drawLabel('5', cellLeft + 16, cellTop + 15, size = 6)
+            elif num == 6:
+                drawLabel('6', cellLeft + 25, cellTop + 15, size = 6)
+            elif num == 7:
+                drawLabel('7', cellLeft + 6, cellTop + 23, size = 6)
+            elif num == 8:
+                drawLabel('8', cellLeft + 16, cellTop + 23, size = 6)
+            elif num == 9:
+                drawLabel('9', cellLeft + 25, cellTop + 23, size = 6)
     if (row, col) == app.selection and app.currentGuess != None and app.board[row][col] == 0:
         drawLabel(app.currentGuess, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'black', align='center')
+    
 
 def getCellLeftTop(app, row, col):
     cellWidth, cellHeight = getCellSize(app)
