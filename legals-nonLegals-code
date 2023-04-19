@@ -2,11 +2,11 @@ from cmu_graphics import *
 
 class State:
 
-    def __init__(self, board, legals, notLegals, selection):
+    def __init__(self, board, legals, notLegals):
         self.board = board
         self.legals = legals
         self.notLegals = notLegals
-        self.selection = selection
+        self.selection = (0, 0)
         rows, cols = len(self.board), len(self.board[0])
         for row in range(rows):
             for col in range(cols):
@@ -26,8 +26,6 @@ class State:
                     for value in tempBlock[0]:
                         if value != 0:
                             self.notLegals[row][col].add(value)
-        print(f'self.notLegals: {self.notLegals}')
-        print(f'self.legals: {self.legals}')
                     
     # def set(self, row, col, value):
     #     self.board[row][col] = value
@@ -62,6 +60,7 @@ class State:
             if index != currIndex:
                 if tempBlock[0][index] == 0:
                     currZeroesIndexes.add(tempBlock[1][index])
+        # print(currZeroesIndexes)
         
         for location in currZeroesIndexes:
             self.legals[location[0]][location[1]].remove(value)
@@ -98,6 +97,8 @@ class State:
                 if tempBlock[0][index] == 0:
                     currZeroesIndexes.add(tempBlock[1][index])
         
+        print(currZeroesIndexes)
+
         for location in currZeroesIndexes:
             self.legals[location[0]][location[1]].add(value)
             self.notLegals[location[0]][location[1]].remove(value)
@@ -106,9 +107,8 @@ class State:
         rows, cols = len(self.board), len(self.board[0])
         valuesList = self.board[row]
         coordsList = []
-        for row in range(rows):
-            for col in range(cols):
-                coordsList.append((row, col))
+        for col in range(cols):
+            coordsList.append((row, col))
         return [valuesList, coordsList]
 
     def getColRegion(self, col):
@@ -172,14 +172,15 @@ def onAppStart(app):
     for row in range(9):
         for num in range(9):
             app.notLegals[row].append(set())
-    state = State(app.board, app.legals, app.notLegals, app.selection)
+    app.state = State(app.board, app.legals, app.notLegals)
 
 def redrawAll(app):
     pass
 
 def onKeyPress(app, key):
     if key == 'enter':
-        state.unban()
+        # app.state.ban(0, 0, 3)
+        app.state.unban(0, 0, 3)
         
 # why do we have to copy state, why can't modify directly? -- FOR UNDO/REDO
 
