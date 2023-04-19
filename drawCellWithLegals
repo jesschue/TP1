@@ -1,0 +1,33 @@
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.board[row][col] == 0: 
+        color = None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=color, border='black',
+                borderWidth=app.cellBorderWidth)
+    else: 
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=rgb(58, 58, 58), border='black',
+                borderWidth=app.cellBorderWidth)
+    for num in app.state.legals[row][col]:
+        if num == 1:
+            drawLabel('1', cellLeft + 6, cellTop + 7, size = 6)
+        elif num == 2:
+            drawLabel('2', cellLeft + 16, cellTop + 7, size = 6)
+        elif num == 3:
+            drawLabel('3', cellLeft + 25, cellTop + 7, size = 6)
+        elif num == 4:
+            drawLabel('4', cellLeft + 6, cellTop + 15, size = 6)
+        elif num == 5:
+            drawLabel('5', cellLeft + 16, cellTop + 15, size = 6)
+        elif num == 6:
+            drawLabel('6', cellLeft + 25, cellTop + 15, size = 6)
+        elif num == 7:
+            drawLabel('7', cellLeft + 6, cellTop + 23, size = 6)
+        elif num == 8:
+            drawLabel('8', cellLeft + 16, cellTop + 23, size = 6)
+        elif num == 9:
+            drawLabel('9', cellLeft + 25, cellTop + 23, size = 6)
+    if app.board[row][col] != 0: 
+        drawLabel(app.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'white', align='center')
