@@ -1,0 +1,19 @@
+app.boardWidth = app.width - 100
+app.boardHeight = app.height - 100
+
+if app.numberOfIncorrect <= 5:
+        # drawRect(app.width + 50, 20, 85, 20, fill = None)
+        drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+        drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+        for num in range(1, 6):
+            drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+           
+drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
+drawLabel(app.numberOfCoins, 70, 30, size = 20)
+
+drawLine(app.boardLeft + 72 * 3, app.boardTop, app.boardLeft + 72 * 3, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
+drawLine(app.boardLeft + 72 * 6, app.boardTop, app.boardLeft + 72 * 6, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
+drawLine(app.boardLeft, app.boardTop + 72 * 3, app.boardLeft + 72 * 9, app.boardTop + 72 * 3, fill = 'darkGrey', lineWidth = 7)
+drawLine(app.boardLeft, app.boardTop + 72 * 6, app.boardLeft + 72 * 6, app.boardTop + 72 * 6, fill = 'darkGrey', lineWidth = 7)
+
+runApp(750, 750)
