@@ -14,6 +14,6 @@ drawLabel(app.numberOfCoins, 70, 30, size = 20)
 drawLine(app.boardLeft + 72 * 3, app.boardTop, app.boardLeft + 72 * 3, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
 drawLine(app.boardLeft + 72 * 6, app.boardTop, app.boardLeft + 72 * 6, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
 drawLine(app.boardLeft, app.boardTop + 72 * 3, app.boardLeft + 72 * 9, app.boardTop + 72 * 3, fill = 'darkGrey', lineWidth = 7)
-drawLine(app.boardLeft, app.boardTop + 72 * 6, app.boardLeft + 72 * 6, app.boardTop + 72 * 6, fill = 'darkGrey', lineWidth = 7)
+drawLine(app.boardLeft, app.boardTop + 72 * 6, app.boardLeft + 72 * 9, app.boardTop + 72 * 6, fill = 'darkGrey', lineWidth = 7)
 
 runApp(750, 750)
