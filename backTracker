@@ -90,3 +90,53 @@ def findEmptyCellWithFewestLegals(tempBoard, tempLegals, alreadySeen):
                     shortestLegalsCell = (row, col)
     alreadySeen.add(shortestLegalsCell)
     return shortestLegalsCell[0], shortestLegalsCell[1], tempBoard, tempLegals, alreadySeen
+    
+VERSION 3 (WORKS, BUT TOO SLOW):
+# inspiration taken from solveMiniSudoku on CS Academy
+def solveMiniSudoku(board, legals):
+    valuesGiven = 0
+    for row in range(len(board)):
+        for col in range(len(board[0])):
+            if board[row][col] != 0:
+                valuesGiven += 1
+    result = copy.deepcopy(board)
+    alreadySeen = set()
+    return sudokuSolver(result, legals, alreadySeen, valuesGiven)
+
+def sudokuSolver(board, legals, alreadySeen, valuesGiven):
+    rows, cols = len(board), len(board[0])
+    row, col, alreadySeen = findEmptyCellWithFewestLegals(board, legals, alreadySeen, valuesGiven)
+    if isLegalSudoku(board) == False:
+        return None
+    if row == None:
+        return board
+    else:
+        for number in legals[row][col]: # number in legals doesn't work --> loops back and tries another number
+            # bug is when it loops back, adding another cell to alreadySeen for some reason when it shouldn't (1, 4)
+            copyOfAlreadySeen = copy.copy(alreadySeen)
+            if isLegalSudoku(board):
+                board[row][col] = number
+                solution = sudokuSolver(board, legals, alreadySeen, valuesGiven)
+                if solution != None:
+                    return solution
+                board[row][col] = 0
+                alreadySeen = copyOfAlreadySeen
+        return None
+
+def findEmptyCellWithFewestLegals(tempBoard, tempLegals, alreadySeen, valuesGiven):
+    if len(alreadySeen) == 81 - valuesGiven: # NOT 81! DON'T SEE ALREADY-GIVEN CELLS!
+        return None, None, None
+    shortestLen = None
+    shortestLegalsCell = None
+    for row in range(len(tempLegals)):
+        colLength = len(tempLegals[row])
+        for col in range(colLength):
+            if (row, col) not in alreadySeen:
+                if tempLegals[row][col] != set() and tempBoard[row][col] == 0 and shortestLen == None:
+                    shortestLen = len(tempLegals[row][col])
+                    shortestLegalsCell = (row, col)
+                elif tempLegals[row][col] != set() and tempBoard[row][col] == 0 and len(tempLegals[row][col]) < shortestLen:
+                    shortestLen = len(tempLegals[row][col])
+                    shortestLegalsCell = (row, col)
+    alreadySeen.add(shortestLegalsCell)
+    return shortestLegalsCell[0], shortestLegalsCell[1], alreadySeen
