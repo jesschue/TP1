@@ -17,3 +17,23 @@ drawLine(app.boardLeft, app.boardTop + 72 * 3, app.boardLeft + 72 * 9, app.board
 drawLine(app.boardLeft, app.boardTop + 72 * 6, app.boardLeft + 72 * 9, app.boardTop + 72 * 6, fill = 'darkGrey', lineWidth = 7)
 
 runApp(750, 750)
+
+for num in app.state.legals[row][col]:
+                if num == 1:
+                    drawLabel('1', cellLeft + app.width // 75, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                elif num == 2:
+                    drawLabel('2', cellLeft + (app.width // 75)*3.5, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                elif num == 3:
+                    drawLabel('3', cellLeft + (app.width // 75)*6, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                elif num == 4:
+                    drawLabel('4', cellLeft + app.width // 75, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                elif num == 5:
+                    drawLabel('5', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                elif num == 6:
+                    drawLabel('6', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                elif num == 7:
+                    drawLabel('7', cellLeft + app.width // 75, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                elif num == 8:
+                    drawLabel('8', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                elif num == 9:
+                    drawLabel('9', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
