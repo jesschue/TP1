@@ -5,12 +5,11 @@ def solveMiniSudoku(board, legals):
     result = copy.deepcopy(board)
     tempBoard = copy.deepcopy(board)
     tempLegals = copy.deepcopy(legals)
-    alreadySeen = set()
-    return sudokuSolver(result, tempBoard, legals, tempLegals, alreadySeen)
+    return sudokuSolver(result, tempBoard, legals, tempLegals)
 
-def sudokuSolver(board, tempBoard, legals, tempLegals, alreadySeen):
+def sudokuSolver(board, tempBoard, legals, tempLegals):
     rows, cols = len(board), len(board[0])
-    row, col, tempBoard, tempLegals = findEmptyCellWithFewestLegals(tempBoard, tempLegals, alreadySeen)
+    row, col, tempBoard, tempLegals = findEmptyCellWithFewestLegals(tempBoard, tempLegals)
     if isLegalSudoku(board) == False:
         return None
     if row == None:
