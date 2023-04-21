@@ -10,8 +10,6 @@ def solveMiniSudoku(board, legals):
 def sudokuSolver(board, tempBoard, legals, tempLegals):
     rows, cols = len(board), len(board[0])
     row, col, tempBoard, tempLegals = findEmptyCellWithFewestLegals(tempBoard, tempLegals)
-    if isLegalSudoku(board) == False:
-        return None
     if row == None:
         return board
     else:
