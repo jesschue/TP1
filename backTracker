@@ -1,12 +1,14 @@
+# inspiration taken from solveMiniSudoku on CS Academy
 def solveMiniSudoku(board, legals):
     result = copy.deepcopy(board)
     tempBoard = copy.deepcopy(board)
     tempLegals = copy.deepcopy(legals)
-    return sudokuSolver(result, tempBoard, legals, tempLegals)
+    alreadySeen = set()
+    return sudokuSolver(result, tempBoard, legals, tempLegals, alreadySeen)
 
-def sudokuSolver(board, tempBoard, legals, tempLegals):
+def sudokuSolver(board, tempBoard, legals, tempLegals, alreadySeen):
     rows, cols = len(board), len(board[0])
-    row, col, tempBoard, tempLegals = findEmptyCellWithFewestLegals(tempBoard, tempLegals)
+    row, col, tempBoard, tempLegals = findEmptyCellWithFewestLegals(tempBoard, tempLegals, alreadySeen)
     if isLegalSudoku(board) == False:
         return None
     if row == None:
@@ -15,6 +17,8 @@ def sudokuSolver(board, tempBoard, legals, tempLegals):
         for number in legals[row][col]:
             if isLegalSudoku(board):
                 board[row][col] = number
+                print(row, col)
+                print(board)
                 solution = sudokuSolver(board, tempBoard, legals, tempLegals)
                 if solution != None:
                     return solution
@@ -22,16 +26,20 @@ def sudokuSolver(board, tempBoard, legals, tempLegals):
         return None
 
 def findEmptyCellWithFewestLegals(tempBoard, tempLegals):
+    tempTempLegals = flatten(tempLegals)
+    if len(tempTempLegals) == tempTempLegals.count(set()): # works
+        return None, None, None, None
     shortestLen = None
     shortestLegalsCell = None
     for row in range(len(tempLegals)):
-        for col in range(len(tempLegals[0])):
+        colLength = len(tempLegals[row])
+        for col in range(colLength):
             if tempLegals[row][col] != set() and tempBoard[row][col] == 0 and shortestLen == None:
                 shortestLen = len(tempLegals[row][col])
                 shortestLegalsCell = (row, col)
             elif tempLegals[row][col] != set() and tempBoard[row][col] == 0 and len(tempLegals[row][col]) < shortestLen:
                 shortestLen = len(tempLegals[row][col])
                 shortestLegalsCell = (row, col)
-    tempBoard[row].pop(col)
-    tempLegals[row].pop(col)
-    return row, col, tempBoard, tempLegals
+    tempBoard[shortestLegalsCell[0]].pop(shortestLegalsCell[1]) # indexing into wrong index on board because popping
+    tempLegals[shortestLegalsCell[0]].pop(shortestLegalsCell[1])
+    return shortestLegalsCell[0], shortestLegalsCell[1], tempBoard, tempLegals
