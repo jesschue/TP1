@@ -1,0 +1,51 @@
+app.toadShopImage = '''C:\\Users\\jessi\\OneDrive\Desktop\\15-112\\sudoku\\mario-party-superstars-toad-shop-25848.png'''
+app.shelves = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\image_processing20210530-7831-1t3i35v.png'''
+app.starItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\3380799-star.png'''
+app.mysteryBoxItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\200px-Question_Block_SM3DL.png'''
+app.mushroomItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\Mk8item1.png'''
+app.backToGameButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\bc30079f0301e28.png'''
+app.blankGreenSign = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\6a081419ce85c20.png'''
+
+imageWidth, imageHeight = getImageSize(app.toadShopImage)
+drawImage(app.toadShopImage, 0, 0, width = imageWidth//1.7, height = imageHeight//1.7)
+
+imageWidth, imageHeight = getImageSize(app.shelves)
+drawImage(app.shelves, 490, 450, width = imageWidth//3, height = imageHeight//3, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.shelves)
+drawImage(app.shelves, 490, 600, width = imageWidth//3, height = imageHeight//3, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.shelves)
+drawImage(app.shelves, 490, 750, width = imageWidth//3, height = imageHeight//3, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.starItem)
+drawImage(app.starItem, 350, 600, width = imageWidth//3, height = imageHeight//3)
+
+imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+drawImage(app.blankGreenSign, 600, 670, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+
+drawLabel('BUY HINT: 250 COINS', 600, 670, fill = 'black', size = 18, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.mysteryBoxItem)
+drawImage(app.mysteryBoxItem, 400, 505, width = imageWidth//2, height = imageHeight//2, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+drawImage(app.blankGreenSign, 600, 515, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+
+drawLabel('BUY HEALTH: 500 COINS', 600, 515, fill = 'black', size = 16, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.mushroomItem)
+drawImage(app.mushroomItem, 400, 350, width = imageWidth//3.5, height = imageHeight//3.5, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+drawImage(app.blankGreenSign, 600, 370, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+
+drawLabel('BUY UNDO & REDO: 300 COINS', 600, 370, fill = 'black', size = 13, align = 'center')
+
+imageWidth, imageHeight = getImageSize(app.backToGameButton)
+drawImage(app.backToGameButton, 125, 680, width = imageWidth//2.5, height = imageHeight//2.5, align = 'center')
+
+drawRect(10, 340, 225, 100, fill = 'blue')
+drawLabel('YOUR WALLET:', 122, 360, fill = 'white', size = 20)
+drawCircle(90, 400, 20, fill = 'yellow', border = 'black')
+drawLabel(app.numberOfCoins, 140, 400, fill = 'white', size = 20)
