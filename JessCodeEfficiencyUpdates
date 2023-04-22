@@ -1,0 +1,69 @@
+def __init__(self, board, legals, notLegals, selection):
+        self.board = board
+        self.legals = legals
+        self.notLegals = notLegals
+        self.selection = selection
+        rows, cols = len(self.board), len(self.board[0])
+        for row in range(rows):
+            for col in range(cols):
+                if self.board[row][col] == 0:
+                    tempRow = self.getRowRegion(row)
+                    tempCol = self.getColRegion(col)
+                    tempBlock = self.getBlockRegion(row, col)
+                    for num in range(1, 10):
+                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                            self.legals[row][col].add(num)
+                        else:
+                            self.notLegals[row][col].add(num) # CODE UPDATE!
+        self.solution = solveMiniSudoku(self.board, self.legals)
+
+def ban(self, row, col, value):
+        currZeroesIndexes = set() # CODE UPDATE!
+        currIndex = None
+
+        tempRow = self.getRowRegion(row)
+        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(col)
+        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(row, col)
+        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        
+        for location in currZeroesIndexes:
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
+            self.notLegals[location[0]][location[1]].add(value)
+
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+        
+# IS THIS CORRECT/DOES IT WORK? WILL CHANGE FOR UNBAN IF SO
+
+def onAppStart(app):
+    app.notLegals = copy.deepcopy(app.legals)
+
+if app.numberOfIncorrect <= 5:
+        # drawRect(app.width + 50, 20, 85, 20, fill = None)
+        drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+        drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+        for num in range(1, 6):
+            drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+    drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
+    drawLabel(app.numberOfCoins, 70, 30, size = 20)
+
+def redrawAll(app):
+    # drawing thick gray lines
+    for i in range(1, 3):
+        drawLine(app.boardLeft + 72 * 3 * i, app.boardTop, app.boardLeft + 72 * 3 * i, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
+        drawLine(app.boardLeft, app.boardTop + 72 * 3 * i, app.boardLeft + 72 * 9, app.boardTop + 72 * 3 * i, fill = 'darkGrey', lineWidth = 7)
+    
+    # DRAW HEALTH BAR AND COINS!
+    # CHANGE LEGALS COLORS TO GRAY
