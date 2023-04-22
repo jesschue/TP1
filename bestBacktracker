@@ -1,0 +1,27 @@
+def solveMiniSudoku(board, legals):
+    result = copy.deepcopy(board)
+    rows, cols = len(board), len(board[0])
+    rowColLegalsList = []
+    for row in range(rows):
+        for col in range(cols):
+            if legals[row][col] != set(): 
+                rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
+                rowColLegalsList.sort()
+                rowColLegalsList.reverse()
+    return sudokuSolver(result, legals, rowColLegalsList)
+
+def sudokuSolver(board, legals, rowColLegalsList):
+    if rowColLegalsList == []:
+        return board
+    else:
+        for cell in rowColLegalsList[::-1]:
+            for legal in cell[1]:
+                if isLegalSudoku(board):
+                    board[cell[2]][cell[3]] = legal
+                    rowColLegalsList.pop()
+                    solution = sudokuSolver(board, legals, rowColLegalsList)
+                    if solution != None:
+                        return solution
+                    board[cell[2]][cell[3]] = 0
+                    rowColLegalsList.append(cell)
+            return None
