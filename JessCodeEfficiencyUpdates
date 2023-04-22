@@ -48,22 +48,34 @@ def ban(self, row, col, value):
 # IS THIS CORRECT/DOES IT WORK? WILL CHANGE FOR UNBAN IF SO
 
 def onAppStart(app):
+    app.boardTop = 70 # more space to draw things at top
     app.notLegals = copy.deepcopy(app.legals)
 
-if app.numberOfIncorrect <= 5:
-        # drawRect(app.width + 50, 20, 85, 20, fill = None)
-        drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
-        drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
-        for num in range(1, 6):
-            drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
-    drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
-    drawLabel(app.numberOfCoins, 70, 30, size = 20)
+if 0 <= app.numberOfIncorrect < 5:
+    drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+for num in range(1, 6):
+    drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
+drawLabel(app.numberOfCoins, 70, 30, size = 20)
 
 def redrawAll(app):
+    drawRect(100, 15, 175, 40, fill = 'blue')
+    drawLabel('OPEN ITEM SHOP', 187, 35, fill = 'white', align = 'center', size = 16)
+    drawRect(300, 15, 175, 40, fill = 'blue')
+    drawLabel('HELP & SETTINGS', 387, 35, fill = 'white', align = 'center', size = 16)
     # drawing thick gray lines
     for i in range(1, 3):
         drawLine(app.boardLeft + 72 * 3 * i, app.boardTop, app.boardLeft + 72 * 3 * i, app.boardTop + 72 * 9, fill = 'darkGrey', lineWidth = 7)
         drawLine(app.boardLeft, app.boardTop + 72 * 3 * i, app.boardLeft + 72 * 9, app.boardTop + 72 * 3 * i, fill = 'darkGrey', lineWidth = 7)
     
     # DRAW HEALTH BAR AND COINS!
+    if 0 <= app.numberOfIncorrect < 5:
+        drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+    drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+    for num in range(1, 6):
+        drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+    drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
+    drawLabel(app.numberOfCoins, 70, 30, size = 20)
+    
     # CHANGE LEGALS COLORS TO GRAY
