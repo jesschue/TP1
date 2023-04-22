@@ -12,6 +12,8 @@ app.mysteryBoxItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\200
 
 # Mushroom item: https://www.ign.com/wikis/mario-kart-8/Mushroom
 app.mushroomItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\Mk8item1.png'''
+
+# Back to game button: https://pixelartmaker.com/art/dd8fa0e4d49f5b6
 app.backToGameButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\bc30079f0301e28.png'''
 
 # Blank green sign: https://pixelartmaker.com/art/6a081419ce85c20
