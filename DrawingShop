@@ -1,9 +1,20 @@
+# Toad shop image: https://www.gameskinny.com/iiaum/all-mario-party-superstars-unlockables-stickers-soundtracks-more
 app.toadShopImage = '''C:\\Users\\jessi\\OneDrive\Desktop\\15-112\\sudoku\\mario-party-superstars-toad-shop-25848.png'''
+
+# Shop shelves: https://creazilla.com/nodes/1996026-small-basic-wood-wall-shelf-clipart
 app.shelves = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\image_processing20210530-7831-1t3i35v.png'''
+
+# Super star item: https://www.mariowiki.com/Super_Star
 app.starItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\3380799-star.png'''
+
+# Mystery box item: https://mario.fandom.com/wiki/Question_Block
 app.mysteryBoxItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\200px-Question_Block_SM3DL.png'''
+
+# Mushroom item: https://www.ign.com/wikis/mario-kart-8/Mushroom
 app.mushroomItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\Mk8item1.png'''
 app.backToGameButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\bc30079f0301e28.png'''
+
+# Blank green sign: https://pixelartmaker.com/art/6a081419ce85c20
 app.blankGreenSign = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\6a081419ce85c20.png'''
 
 imageWidth, imageHeight = getImageSize(app.toadShopImage)
