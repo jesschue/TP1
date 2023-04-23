@@ -22,13 +22,13 @@ def ban(self, row, col, value):
         currIndex = None
 
         tempRow = self.getRowRegion(row)
-        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
 
         tempCol = self.getColRegion(col)
-        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
 
         tempBlock = self.getBlockRegion(row, col)
-        currZeroesIndexes, currIndex = State.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
         
         for location in currZeroesIndexes:
             if value in self.legals[location[0]][location[1]]: 
