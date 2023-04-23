@@ -1,0 +1,412 @@
+import itertools
+
+# HINT 2
+
+# find pair --> make move (crossing out everything else)
+# triple = 3 cells in same region w/ 3 values only
+
+legals = [[set(), {8}, {8, 5}, set(), set(), set(), set(), {7}, set()], 
+          [set(), set(), set(), {5}, {9, 5}, {8, 9}, {1, 2, 5}, set(), {2}], 
+          [set(), set(), {9, 5}, {5, 7}, set(), {9, 4, 7}, {3, 5}, {3, 7}, set()], 
+          [set(), {2, 7}, set(), set(), {1, 7}, {1, 7}, {2, 3}, set(), set()], 
+          [set(), set(), set(), set(), {9, 4}, {9, 4, 6}, set(), {9, 2}, {2, 6}], 
+          [{4}, {7}, {3, 7}, set(), {9, 4, 5, 7}, {9, 4, 6, 7}, {8, 9, 3, 6}, {9, 3}, set()], 
+          [{5}, {8, 2, 6, 7}, {8, 2, 5, 7}, set(), {1, 2, 7}, {1, 7}, {1, 2, 6, 9}, {1, 2, 9, 7}, set()], 
+          [set(), set(), {2, 7}, set(), {1, 2, 7}, set(), {1, 2, 6}, set(), {2, 6, 7}], 
+          [set(), set(), {2, 7}, set(), set(), {3, 7}, {2}, set(), {2, 4, 7}]]
+
+from cmu_graphics import * 
+import math 
+import random
+import os
+import copy
+
+class State:
+
+    def __init__(self, board, legals, notLegals, selection):
+        self.board = board
+        self.legals = legals
+        self.notLegals = notLegals
+        self.selection = selection
+        rows, cols = len(self.board), len(self.board[0])
+        for row in range(rows):
+            for col in range(cols):
+                if self.board[row][col] == 0:
+                    tempRow = self.getRowRegion(self.board, row)
+                    tempCol = self.getColRegion(self.board, col)
+                    tempBlock = self.getBlockRegion(self.board, row, col)
+                    for num in range(1, 10):
+                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                            self.legals[row][col].add(num)
+                        else:
+                            self.notLegals[row][col].add(num)
+        self.allRegions = self.getAllRegions()
+        self.hint2Level1AlreadySeen = set()
+        self.hint2Level2AlreadySeen = set()
+
+    def ban(self, row, col, value):
+        # take out of self.legals and put into self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        
+        for location in currZeroesIndexes:
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
+            self.notLegals[location[0]][location[1]].add(value)
+
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def unban(self, row, col, value):
+        # put into self.legals and take out of self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempBlock, currZeroesIndexes)
+
+        for location in currZeroesIndexes:
+            self.legals[location[0]][location[1]].add(value)
+            if value in self.notLegals[location[0]][location[1]]: 
+                self.notLegals[location[0]][location[1]].remove(value)
+    
+    def currZeroesIndexesUnBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def getAllRegions(self):
+        allRegions = []
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                rowRegion = self.getRowRegion(self.legals, row)
+                if rowRegion[1] not in allRegions:
+                    allRegions.append(rowRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                colRegion = self.getColRegion(self.legals, col)
+                if colRegion[1] not in allRegions:
+                    allRegions.append(colRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                blockRegion = self.getBlockRegion(self.legals, row, col)
+                if blockRegion[1] not in allRegions:
+                    allRegions.append(blockRegion[1])
+        return allRegions
+
+    def getHint2Level1(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                print(targets)
+                if values != None and targets != None and targets not in self.hint2Level1AlreadySeen: # PROBLEM W/ LEVEL 1 ALREADY SEEN
+                    self.hint2Level1AlreadySeen.add(targets)
+                    return values, targets
+        return None, None
+
+    def getHint2Level2(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                if values != None and targets != None and targets not in self.hint2Level2AlreadySeen:
+                    self.hint2Level2AlreadySeen.add(targets)
+                    self.getBansForAllRegions(values, targets)
+                    return values, targets
+        return None, None
+
+    def applyRule2(self, region, N):
+        L = [i for i in range(1, 10)]
+        for M in itertools.combinations(region, N):
+            legalsSet = set()
+            breakOut = False
+            for cell in M:
+                if self.legals[cell[0]][cell[1]] == set() or len(self.legals[cell[0]][cell[1]]) == 1:
+                    breakOut = True # cannot have hint w/ already given values --> break out of loop + create new combo of cells -- NOT WORKING?
+                else:
+                    legalsSet = legalsSet.union(self.legals[cell[0]][cell[1]])
+            # breaking into here, but i don't want it to go into this for loop
+            if not breakOut:
+                for B in itertools.combinations(L, len(M)):
+                    possibleValuesSet = set(B)
+                    if legalsSet == possibleValuesSet:
+                        return possibleValuesSet, M
+        return None, None
+
+    def getBansForAllRegions(self, values, targets):
+        # The values (to ban) can stay in the targets, but they must be
+        # banned from all other cells in all regions that contain all
+        # the targets
+        for region in self.getAllRegionsThatContainTargets(targets):
+            for cell in region:
+                if cell not in targets:
+                    for value in values:
+                        if value in self.legals[cell[0]][cell[1]]:
+                            self.legals[cell[0]][cell[1]].remove(value)
+
+    def getAllRegionsThatContainTargets(self, targets):
+        regionList = []
+        for region in self.allRegions:
+            for target in targets:
+                if target in region:
+                    regionList.append(region)
+        return regionList
+
+    def getRowRegion(self, location, row):
+        rows, cols = len(location), len(location[0])
+        valuesList = location[row]
+        coordsList = []
+        for col in range(cols):
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getColRegion(self, location, col):
+        rows, cols = len(location), len(location[0])
+        valuesList = []
+        coordsList = []
+        for row in range(rows):
+            valuesList.append(location[row][col])
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlockRegion(self, location, row, col):
+        rows, cols = None, None
+        blockNum = self.getBlock(row, col)
+        valuesList = []
+        coordsList = []
+        if blockNum == 0 or blockNum == 1 or blockNum == 2:
+            rows = (0, 3)
+        elif blockNum == 3 or blockNum == 4 or blockNum == 5:
+            rows = (3, 6)
+        elif blockNum == 6 or blockNum == 7 or blockNum == 8:
+            rows = (6, 9)
+        if blockNum == 0 or blockNum == 3 or blockNum == 6:
+            cols = (0, 3)
+        elif blockNum == 1 or blockNum == 4 or blockNum == 7:
+            cols = (3, 6)
+        elif blockNum == 2 or blockNum == 5 or blockNum == 8:
+            cols = (6, 9)
+        for row in range(rows[0], rows[1]):
+            for col in range(cols[0], cols[1]):
+                valuesList.append(location[row][col])
+                coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlock(self, row, col): # block number
+        if 0 <= row <= 2 and 0 <= col <= 2:
+            blockNum = 0
+        elif 0 <= row <= 2 and 3 <= col <= 5:
+            blockNum = 1
+        elif 0 <= row <= 2 and 6 <= col <= 8:
+            blockNum = 2
+        elif 3 <= row <= 5 and 0 <= col <= 2:
+            blockNum = 3
+        elif 3 <= row <= 5 and 3 <= col <= 5:
+            blockNum = 4
+        elif 3 <= row <= 5 and 6 <= col <= 8:
+            blockNum = 5
+        elif 6 <= row <= 8 and 0 <= col <= 2:
+            blockNum = 6
+        elif 6 <= row <= 8 and 3 <= col <= 5:
+            blockNum = 7
+        elif 6 <= row <= 8 and 6 <= col <= 8:
+            blockNum = 8
+        return blockNum
+
+def onAppStart(app):
+    app.rows = 9
+    app.cols = 9
+    app.boardLeft = 50
+    app.boardTop = 70
+    app.boardWidth = app.width - 100
+    app.boardHeight = app.height - 100
+    app.cellBorderWidth = 2
+    app.characterPopUp = True
+    app.selection = None
+    app.currentGuess = None
+    app.enterValue = False
+
+    app.hint1Level1 = False
+    app.hint1Level2 = False
+    app.hint1Cell = None
+
+    app.hint2Level1 = False
+    app.hint2Level2 = False
+    app.hint2Cells = None
+
+    app.numberOfIncorrect = 0
+    app.numberOfCoins = 50
+    app.gameHasStarted = False
+    app.characterSelectScreen = False 
+    app.chooseDifficultyScreen = False 
+    app.directionsPartOne = False 
+    app.directionsPartTwo = False
+    app.playScreen = True
+    app.chosenCharacter = None
+    app.board = [[6, 0, 0, 1, 3, 2, 4, 0, 9], [7, 3, 4, 0, 0, 0, 0, 6, 0], [2, 1, 0, 0, 6, 0, 0, 0, 8], [9, 0, 6, 8, 0, 0, 0, 4, 5], [8, 5, 1, 3, 0, 0, 7, 0, 0], [0, 0, 0, 2, 0, 0, 0, 0, 1], [0, 0, 0, 4, 0, 0, 0, 0, 3], [3, 4, 0, 9, 0, 5, 0, 8, 0], [1, 9, 0, 6, 8, 0, 0, 5, 0]]
+    rows, cols = len(app.board), len(app.board[0])
+    app.legals = [[] * cols for _ in range(rows)]
+    for row in range(rows):
+        for num in range(9):
+            app.legals[row].append(set())
+    app.notLegals = copy.deepcopy(app.legals)
+    app.state = State(app.board, app.legals, app.notLegals, app.selection)
+    app.tempLegals = copy.deepcopy(app.state.legals)
+
+def redrawAll(app):
+    drawBoard(app)
+    drawLine(app.boardLeft + 72 * 3, app.boardTop, app.boardLeft + 72 * 3, app.boardTop + 72 * 9, fill = 'black', lineWidth = 8)
+    drawLine(app.boardLeft + 72 * 6, app.boardTop, app.boardLeft + 72 * 6, app.boardTop + 72 * 9, fill = 'black', lineWidth = 8)
+    drawLine(app.boardLeft, app.boardTop + 72 * 3, app.boardLeft + 72 * 9, app.boardTop + 72 * 3, fill = 'black', lineWidth = 8)
+    drawLine(app.boardLeft, app.boardTop + 72 * 6, app.boardLeft + 72 * 9, app.boardTop + 72 * 6, fill = 'black', lineWidth = 8)
+    drawBoardBorder(app)
+
+def hint2Level1(app):
+    if app.hint2Level1:
+        values, app.hint2Cells = app.state.getHint2Level1()
+        print(app.hint2Cells)
+    else:
+        app.hint1Cells = None
+
+def hint2Level2(app):
+    if app.hint2Level2:
+        values, app.hint2Cells = app.state.getHint2Level2()
+        print(app.hint2Cells)
+
+def onKeyPress(app, key):
+    # SINGLETONS
+    if key == 's':
+        for row in range(len(app.state.legals)):
+            for col in range(len(app.state.legals[0])):
+                if len(app.state.legals[row][col]) == 1:
+                    app.board[row][col] = int(app.state.legals[row][col].pop())
+                    break
+            break
+    elif key == 'h':
+        if not app.hint2Level1:
+            app.hint2Level1 = True
+            hint2Level1(app)
+        else:
+            app.hint2Level1 = False
+            hint2Level1(app)
+    elif key == 'H':
+        if not app.hint2Level2:
+            app.hint2Level2 = True
+            hint2Level2(app)
+        else:
+            app.hint2Level2 = False
+            hint2Level2(app)
+
+def getCell(app, x, y):
+    dx = x - app.boardLeft
+    dy = y - app.boardTop
+    cellWidth, cellHeight = getCellSize(app)
+    row = math.floor(dy / cellHeight)
+    col = math.floor(dx / cellWidth)
+    if (0 <= row < app.rows) and (0 <= col < app.cols):
+        return (row, col)
+    else:
+        return None
+
+def drawBoard(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            drawCell(app, row, col)  
+
+def drawBoardBorder(app):
+  # draw the board outline (with double-thickness):
+  drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
+           fill=None, border='black',
+           borderWidth=2*app.cellBorderWidth)
+
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.board[row][col] == 0: 
+        if app.hint1Level1 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else None
+        elif app.hint1Level2 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else None
+        elif app.hint2Level1 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else None
+        elif app.hint2Level2 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else None
+        else:
+            color = 'cyan' if (row, col) == app.selection else None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill=color, border='black',
+                borderWidth=app.cellBorderWidth)
+        if app.hint1Level2 == True and app.hint1Cell == (row, col):
+            drawLabel(app.hint1Level2Value, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width // 20, fill = 'black', align='center')
+    else: 
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight,
+                fill='lightGray', border='black',
+                borderWidth=app.cellBorderWidth)
+    if app.board[row][col] != 0:
+        drawLabel(app.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width // 20, fill = 'black', align='center')
+    else:
+        if (row, col) == app.selection and app.currentGuess != None and app.board[row][col] == 0:
+            drawLabel(app.currentGuess, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = 18, fill = 'black', align='center')
+        else:
+            for num in app.state.legals[row][col]:
+                if (row, col) != app.hint1Cell:
+                    if num == 1:
+                        drawLabel('1', cellLeft + app.width // 75, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                    elif num == 2:
+                        drawLabel('2', cellLeft + (app.width // 75)*3.5, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                    elif num == 3:
+                        drawLabel('3', cellLeft + (app.width // 75)*6, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                    elif num == 4:
+                        drawLabel('4', cellLeft + app.width // 75, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                    elif num == 5:
+                        drawLabel('5', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                    elif num == 6:
+                        drawLabel('6', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                    elif num == 7:
+                        drawLabel('7', cellLeft + app.width // 75, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                    elif num == 8:
+                        drawLabel('8', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                    elif num == 9:
+                        drawLabel('9', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+
+def getCellLeftTop(app, row, col):
+    cellWidth, cellHeight = getCellSize(app)
+    cellLeft = app.boardLeft + col * cellWidth
+    cellTop = app.boardTop + row * cellHeight
+    return (cellLeft, cellTop)
+
+def getCellSize(app):
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    return (cellWidth, cellHeight)
+
+def main():
+    runApp(750, 750)
+
+main()
