@@ -35,7 +35,36 @@ def ban(self, row, col, value):
                 self.legals[location[0]][location[1]].remove(value)
             self.notLegals[location[0]][location[1]].add(value)
 
-    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+def unban(self, row, col, value):
+        # put into self.legals and take out of self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempBlock, currZeroesIndexes)
+
+        for location in currZeroesIndexes:
+            self.legals[location[0]][location[1]].add(value)
+            if value in self.notLegals[location[0]][location[1]]: 
+                self.notLegals[location[0]][location[1]].remove(value)
+    
+def currZeroesIndexesUnBan(self, currIndex, location, currZeroesIndexes):
         for index in range(len(location[1])):
             if location[1][index] == self.selection:
                 currIndex = index
@@ -77,5 +106,3 @@ def redrawAll(app):
         drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
     drawCircle(40, 30, 13, fill = 'yellow', border = 'black')
     drawLabel(app.numberOfCoins, 70, 30, size = 20)
-    
-    # CHANGE LEGALS COLORS TO GRAY
