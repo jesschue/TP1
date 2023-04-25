@@ -318,7 +318,7 @@ def onAppStart(app):
     app.enterValue = False
     app.gameHasStarted = True
 
-    if app.gameHasStarted:
+    if app.gameHasStarted: # PUT IN ONMOUSEPRESS!!!
         app.sudokuPlaySound.play()
 
     app.characterSelectScreen = False 
