@@ -3,8 +3,10 @@ import math
 import random
 import os
 import copy
+from PIL import Image, ImageDraw
+from PIL import Image
 
-# CITATIONS: WE WILL COMPLETE ALL CITATIONS FOR TP3 
+# CITATIONS CITATIONS --> FUNCTION CITATIONS ARE RIGHT ABOVE EACH FUNCTION IN THIS CODE 
 # start button: https://pixelartmaker.com/art/54b5ab9b34da8a3
 # directions page background: https://www.motionelements.com/stock-video-9212534-super-mario-bros-platform-game-on-a-green-screen-background
 # starting screen background: https://www.pxfuel.com/en/desktop-wallpaper-gdwza
@@ -21,119 +23,70 @@ import copy
 # toadette pop-up: https://marioversewiki.com/wiki/Toadette
 # pixelated health bar heart: https://www.istockphoto.com/vector/pixel-heart-gm536892143-57588174
 # "you win" game over image: https://jacques-le-monde.tumblr.com/post/15665964675
-# Functions used from CMU CS Academy:
-    # getCell 
-    # drawBoard
-    # drawBoardBorder
-    # drawCell
-    # getCellLeftTop
-    # getCellSize
-    # Exercise 4.5 isLegalSudoku
-# Functions used from the Sudoku Hints page: 
-    # readFile 
-    # loadBoardPaths 
-    # hasFilters
 
-class State:
+# what I added: 
+# citations
+# coin number updates 
+# directions button (app.directionsWhenGameStartedPartOne & app.directionsPartTwo)
 
+class State: 
     def __init__(self, board, legals, notLegals, selection):
-        self.board = board
-        self.legals = legals
-        self.notLegals = notLegals
-        self.selection = selection
-        rows, cols = len(self.board), len(self.board[0])
-        for row in range(rows):
-            for col in range(cols):
-                if self.board[row][col] == 0:
-                    tempRow = self.getRowRegion(row)
-                    tempCol = self.getColRegion(col)
-                    tempBlock = self.getBlockRegion(row, col)
-                    for num in range(1, 10):
-                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
-                            self.legals[row][col].add(num)
-                    for value in tempRow[0]:
-                        if value != 0:
-                            self.notLegals[row][col].add(value)
-                    for value in tempCol[0]:
-                        if value != 0:
-                            self.notLegals[row][col].add(value)
-                    for value in tempBlock[0]:
-                        if value != 0:
-                            self.notLegals[row][col].add(value)
-                    
+            self.board = board
+            self.legals = legals
+            self.notLegals = notLegals
+            self.selection = selection
+            rows, cols = len(self.board), len(self.board[0])
+            for row in range(rows):
+                for col in range(cols):
+                    if self.board[row][col] == 0:
+                        tempRow = self.getRowRegion(row)
+                        tempCol = self.getColRegion(col)
+                        tempBlock = self.getBlockRegion(row, col)
+                        for num in range(1, 10):
+                            if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                                self.legals[row][col].add(num)
+                            else:
+                                self.notLegals[row][col].add(num) # CODE UPDATE!
+            self.solution = solveSudoku(self.board, self.legals)
+
     def ban(self, row, col, value):
-        # take out of self.legals and put into self.notLegals
-        tempRow = self.getRowRegion(row)
+            currZeroesIndexes = set() # CODE UPDATE!
+            currIndex = None
+            tempRow = self.getRowRegion(row)
+            currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+            tempCol = self.getColRegion(col)
+            currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+            tempBlock = self.getBlockRegion(row, col)
+            currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+            for location in currZeroesIndexes:
+                if value in self.legals[location[0]][location[1]]: 
+                    self.legals[location[0]][location[1]].remove(value)
+                self.notLegals[location[0]][location[1]].add(value)
+    
+    def unban(self, row, col, value): 
+        currZeroesIndexes = set() # CODE UPDATE!
         currIndex = None
-        for index in range(len(tempRow[1])):
-            if tempRow[1][index] == self.selection:
-                currIndex = index
-        currZeroesIndexes = set()
-        for index in range(len(tempRow[0])):
-            if index != currIndex:
-                if tempRow[0][index] == 0:
-                    currZeroesIndexes.add(tempRow[1][index])
-
+        tempRow = self.getRowRegion(row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
         tempCol = self.getColRegion(col)
-        for index in range(len(tempCol[1])):
-            if tempCol[1][index] == self.selection:
-                currIndex = index
-        for index in range(len(tempCol[0])):
-            if index != currIndex:
-                if tempCol[0][index] == 0:
-                    currZeroesIndexes.add(tempCol[1][index])
-
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
         tempBlock = self.getBlockRegion(row, col)
-        for index in range(len(tempBlock[1])):
-            if tempBlock[1][index] == self.selection:
-                currIndex = index
-        for index in range(len(tempBlock[0])):
-            if index != currIndex:
-                if tempBlock[0][index] == 0:
-                    currZeroesIndexes.add(tempBlock[1][index])
-        
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
         for location in currZeroesIndexes:
             if value in self.legals[location[0]][location[1]]: 
-                self.legals[location[0]][location[1]].remove(value)
-            self.notLegals[location[0]][location[1]].add(value)
-
-    def unban(self, row, col, value):
-        # put into self.legals and take out of self.notLegals
-        tempRow = self.getRowRegion(row)
-        currIndex = None
-        for index in range(len(tempRow[1])):
-            if tempRow[1][index] == self.selection:
-                currIndex = index
-        currZeroesIndexes = set()
-        for index in range(len(tempRow[0])):
-            if index != currIndex:
-                if tempRow[0][index] == 0:
-                    currZeroesIndexes.add(tempRow[1][index])
-
-        tempCol = self.getColRegion(col)
-        for index in range(len(tempCol[1])):
-            if tempCol[1][index] == self.selection:
-                currIndex = index
-        for index in range(len(tempCol[0])):
-            if index != currIndex:
-                if tempCol[0][index] == 0:
-                    currZeroesIndexes.add(tempCol[1][index])
-
-        tempBlock = self.getBlockRegion(row, col)
-        for index in range(len(tempBlock[1])):
-            if tempBlock[1][index] == self.selection:
-                currIndex = index
-        for index in range(len(tempBlock[0])):
-            if index != currIndex:
-                if tempBlock[0][index] == 0:
-                    currZeroesIndexes.add(tempBlock[1][index])
-        
-        print(currZeroesIndexes)
-
-        for location in currZeroesIndexes:
-            self.legals[location[0]][location[1]].add(value)
+                self.legals[location[0]][location[1]].add(value)
             self.notLegals[location[0]][location[1]].remove(value)
 
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+            for index in range(len(location[1])):
+                if location[1][index] == self.selection:
+                    currIndex = index
+            for index in range(len(location[0])):
+                if index != currIndex:
+                    if location[0][index] == 0:
+                        currZeroesIndexes.add(location[1][index])
+            return currZeroesIndexes, currIndex
+    
     def getRowRegion(self, row):
         rows, cols = len(self.board), len(self.board[0])
         valuesList = self.board[row]
@@ -260,6 +213,8 @@ def onAppStart(app):
     app.playScreen = True
     app.openShop = False
     app.sudokuPage = False
+    app.directionsWhenGameStartedPartOne = False
+    app.directionsWhenGameStartedPartTwo = False
     # other values
     app.numberOfIncorrect = 0
     app.selection = None
@@ -270,11 +225,52 @@ def onAppStart(app):
     app.chosenCharacter = None  
     app.numberOfCoins = 1000
     app.characterScreenMessage = None
+    app.shopMessage = None
 
+def makePilImageForCurrBoard(app, rows, cols, imageSize):
+    pillImage = Image.new('RGBA', imageSize)
+    draw = ImageDraw.Draw(pillImage)
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    for row in range(app.rows): 
+        for col in range(app.cols): 
+            cellLeft = app.boardLeft + col * cellWidth
+            cellTop = app.boardTop + row * cellHeight
+            if app.board[row][col] == 0: 
+                draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (255, 255, 255, 127))
+            else: 
+                draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (80, 80, 80, 127))
+            draw.text((cellLeft + cellWidth//2 - 50, cellTop + cellHeight//2 - 70), str(app.board[row][col]))
+    return pillImage
+
+def makePilImageForSolution(app, rows, cols, imageSize):
+    pillImage = Image.new('RGBA', imageSize)
+    draw = ImageDraw.Draw(pillImage)
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    for row in range(app.rows): 
+        for col in range(app.cols): 
+            cellLeft = app.boardLeft + col * cellWidth
+            cellTop = app.boardTop + row * cellHeight  
+            draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (80, 80, 80, 127))
+            draw.text((cellLeft + cellWidth//2 - 50, cellTop + cellHeight//2 - 70), str(app.solution[row][col]))
+    return pillImage
+
+# saveImagesAsPdf function used directly from Term Project Overview page 
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/term-project.html
+def saveImagesAsPdf(app):
+    cmuImages = [app.currentBoardImage, app.solutionImage]
+    pilImages = [cmuImage.image for cmuImage in cmuImages]
+    pilImages[0].save('savedImages.pdf', save_all=True, append_images=pilImages[1:])
+
+# readFile function used directly from Sudoku Hints page 
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
 def readFile(path):
     with open(path, "rt") as f:
         return f.read()
-    
+
+# loadBoardPaths function modified from Sudoku Hints page
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
 def loadBoardPaths(filters):
         boardPaths = [ ]
         boardStarterFiles = '''tp-starter-files\\boards'''
@@ -284,6 +280,8 @@ def loadBoardPaths(filters):
                     boardPaths.append(f'{boardStarterFiles}\\{filename}')
         return boardPaths
 
+# hasFilters function used directly from Sudoku Hints page
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
 def hasFilters(filename, filters=None):
     if filters == None: return True
     for filter in filters:
@@ -309,6 +307,7 @@ def getChosenBoard(app):
         for num in range(9):
             app.notLegals[row].append(set())
     app.state = State(app.board, app.legals, app.notLegals, app.selection)
+    app.solution = solveSudoku(app.board, app.legals)
     return app.chosenBoard 
 
 def makeInto2dList(app, givenBoard): 
@@ -325,7 +324,7 @@ def redrawAll(app):
             drawRect(100, 15, 175, 40, fill = 'blue')
             drawLabel('OPEN ITEM SHOP', 187, 35, fill = 'white', align = 'center', size = 16)
             drawRect(300, 15, 175, 40, fill = 'blue')
-            drawLabel('HELP & SETTINGS', 387, 35, fill = 'white', align = 'center', size = 16)
+            drawLabel('DIRECTIONS', 387, 35, fill = 'white', align = 'center', size = 16)
             if 0 <= app.numberOfIncorrect < 5:
                 drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
             drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
@@ -371,6 +370,52 @@ def redrawAll(app):
             drawLabel('YOUR WALLET:', 122, 360, fill = 'white', size = 20)
             drawCircle(90, 400, 20, fill = 'yellow', border = 'black')
             drawLabel(app.numberOfCoins, 140, 400, fill = 'white', size = 20)
+            if app.shopMessage != None: 
+                drawRect(100, 200, 550, 100, fill = 'red', border = 'black')
+                drawLabel(app.shopMessage, 375, 250, fill = 'black', size = 30)
+        elif app.directionsWhenGameStartedPartOne:
+            imageWidth, imageHeight = getImageSize(app.directionsBackground)
+            drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+            height=imageHeight//0.6)
+
+            drawLabel('DIRECTIONS', 375, 30, fill = 'white', size = 20, bold = True)
+            drawLabel('Welcome to Sudoku! Wait…not JUST Sudoku…MARIO SUDOKU!', 375, 75, size = 20, fill = 'white', align = 'center')
+            drawLabel('Play one of the most popular logic games (minus the math)', 375, 95, size = 20, fill = 'white', align = 'center')
+            drawLabel('set in the world of Mario.', 375, 115, size = 20, fill = 'white', align = 'center')
+            drawLabel('In case you forgot, here are the basic rules of Sudoku:', 330, 155, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('1. Each board is 9 x 9 cells, with a few of the cells already filled in', 100, 185, size = 20, fill = 'white', align = 'left')
+            drawLabel('(how many pre-filled cells depends on the difficulty you choose).', 100, 205, size = 20, fill = 'white', align = 'left')
+            drawLabel('2. Each line, vertically and horizontally, must be filled in with numbers', 100, 235, size = 20, fill = 'white', align = 'left')
+            drawLabel('from 1-9, and you cannot repeat numbers in the same line!', 100, 255, size = 20, fill = 'white', align = 'left')
+            drawLabel('3. There are also nine 3 x 3 blocks marked on the board. Each block', 100, 285, size = 20, fill = 'white', align = 'left')
+            drawLabel('cannot contain repeats either.', 100, 305, size = 20, fill = 'white', align = 'left')
+            drawLabel('Press n to continue to the next page of directions!', 100, 355, size = 20, fill = 'white', align = 'left', bold = True)
+        elif app.directionsWhenGameStartedPartTwo: 
+            imageWidth, imageHeight = getImageSize(app.directionsBackground)
+            drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+            height=imageHeight//0.6)
+
+            drawLabel('To spice things up, us evil game makers (who want you to suffer,', 375, 30, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('but also have fun!) have added some additional rules:', 375, 50, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('1. To start, choose a difficulty: easy, medium, hard, expert, and evil. Based', 40, 90, size = 20, fill = 'white', align = 'left')
+            drawLabel('on the difficulty, you’ll be given a starter board with more or less cells', 40, 110, size = 20, fill = 'white', align = 'left')
+            drawLabel('already filled in for you.', 40, 130, size = 20, fill = 'white', align = 'left')
+            drawLabel('2. Choose a character to play as: Mario, Luigi, Rosalina, Toadette, or', 40, 160, size = 20, fill = 'white', align = 'left')
+            drawLabel('Yellow Yoshi. It’s your job to keep their health bar up: every time', 40, 180, size = 20, fill = 'white', align = 'left')
+            drawLabel('you enter an incorrect value in a cell, a goomba will cause their health', 40, 200, size = 20, fill = 'white', align = 'left')
+            drawLabel('bar to decrease. Once the health bar hits 0, GAME OVER!', 40, 220, size = 20, fill = 'white', align = 'left')
+            drawLabel('3. As you enter values correctly in cells, you will earn coins. Pop open', 40, 250, size = 20, fill = 'white', align = 'left')
+            drawLabel('the shop during the game to use your coins to buy hints, extra undos,', 40, 270, size = 20, fill = 'white', align = 'left')
+            drawLabel('and mystery boxes (buy one to find out what they contain)! If you enter', 40, 300, size = 20, fill = 'white', align = 'left')
+            drawLabel('values incorrectly, however, the cells will turn red and you can use one', 40, 320, size = 20, fill = 'white', align = 'left')
+            drawLabel('of your undos to try again. If you run out of undos, GAME OVER!', 40, 340, size = 20, fill = 'white', align = 'left')
+            drawLabel('4. You will be fighting a final boss as you play through an evil', 40, 370, size = 20, fill = 'white', align = 'left')
+            drawLabel('board, and if you can successfully finish it, you can call yourself', 40, 390, size = 20, fill = 'white', align = 'left')
+            drawLabel('a Sudoku master!', 40, 410, size = 20, fill = 'white', align = 'left')
+            drawLabel('That’s all for now. Good luck!', 375, 440, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+
+            imageWidth, imageHeight = getImageSize(app.backToGameButton)
+            drawImage(app.backToGameButton, 125, 680, width = imageWidth//2.5, height = imageHeight//2.5, align = 'center')
 
     if app.playScreen:
         imageWidth, imageHeight = getImageSize(app.playScreenBackground)
@@ -552,18 +597,39 @@ def onMousePress(app, mouseX, mouseY):
         if 100 <= mouseX <= 275 and 15 <= mouseY <= 55: 
             app.openShop = True
             app.sudokuPage = False
+        if 300 <= mouseX <= 475: 
+            app.directionsWhenGameStartedPartOne = True 
+            app.sudokuPage = False
+        if app.directionsWhenGameStartedPartTwo: 
+            app.directionsWhenGameStartedPartOne = False
+            if 25 <= mouseX <= 228 and 638 <= mouseY <= 722: 
+                app.sudokuPage = True 
+                app.directionsWhenGameStartedPartTwo = False
         if app.openShop: 
             if 25 <= mouseX <= 228 and 638 <= mouseY <= 722: 
                 app.sudokuPage = True 
                 app.openShop = False
+                app.shopMessage = None
             if 487 <= mouseX <= 718 and 340 <= mouseY <= 400: 
-                app.numberOfCoins -= 300 
+                if app.numberOfCoins >= 300: 
+                    app.numberOfCoins -= 300 
+                    app.shopMessage = None
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
             if 487 <= mouseX <= 718 and 485 <= mouseY <= 545: 
-                app.numberOfCoins -= 500 
-                if app.numberOfIncorrect > 0: 
-                    app.numberOfIncorrect -= 1
+                if app.numberOfCoins >= 500: 
+                    app.numberOfCoins -= 500 
+                    app.shopMessage = None
+                    if app.numberOfIncorrect > 0: 
+                        app.numberOfIncorrect -= 1
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
             if 487 <= mouseX <= 718 and 640 <= mouseY <= 700: 
-                app.numberOfCoins -= 250
+                if app.numberOfCoins >= 250: 
+                    app.numberOfCoins -= 250
+                    app.shopMessage = None
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
     else:
         if app.playScreen: 
             if (225 <= mouseX <= 500 and 
@@ -662,6 +728,19 @@ def onKeyPress(app, key):
                 app.state.ban(app.selection[0], app.selection[1], app.board[app.selection[0]][app.selection[1]])
                 checkGameOver(app)
                 app.enterValue = False
+        if app.directionsWhenGameStartedPartOne: 
+            if key == 'n': 
+                app.directionsWhenGameStartedPartTwo = True
+                app.directionsWhenGameStartedPartOne = False 
+                app.sudokuPage = False
+        if key == 's': 
+            imageSize = (app.boardWidth, app.boardHeight)
+            currentBoard = makePilImageForCurrBoard(app, 9, 9, imageSize)
+            solutionBoard  = makePilImageForSolution(app, 9, 9, imageSize)
+            # convert to CMUImage for drawing:
+            app.currentBoardImage = CMUImage(currentBoard)
+            app.solutionImage = CMUImage(solutionBoard)
+            saveImagesAsPdf(app)
     else: 
         if app.directionsPartOne: 
             if key == 'n': 
@@ -672,12 +751,6 @@ def onKeyPress(app, key):
                 app.characterSelectScreen = True
                 app.directionsPartOne = False
                 app.directionsPartTwo = False 
-        # if app.characterSelectScreen: 
-        #     if key == 'd': 
-        #         app.chooseDifficultyScreen = True 
-        #         app.characterSelectScreen = False 
-        #         app.directionsPartOne = False 
-        #         app.directionsPartTwo = False
 
 def checkGameOver(app):
     rows, cols = len(app.board), len(app.board[0])
@@ -690,6 +763,8 @@ def checkGameOver(app):
         break
     return True
 
+# areLegalValues function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
 def areLegalValues(L): 
     seen = [] 
     for i in range(len(L)): 
@@ -702,14 +777,20 @@ def areLegalValues(L):
         seen.append(L[i])
     return True
  
+# isLegalRow function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
 def isLegalRow(grid, row): 
     return areLegalValues(grid[row])
 
+# isLegalCol function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
 def isLegalCol(grid, col): 
     rows = len(grid)
     values = [grid[row][col] for row in range(rows)]
     return areLegalValues(values)
-    
+
+# isLegalBlock function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
 def isLegalBlock(grid, block): 
     blockSize = rounded(len(grid)**0.5)
     startRow = block//blockSize * blockSize
@@ -720,7 +801,9 @@ def isLegalBlock(grid, block):
             row, col = startRow + drow, startCol + dcol 
             values.append(grid[row][col])
     return areLegalValues(values)
-    
+
+# isLegalSudoku function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
 def isLegalSudoku(grid):
     rows, cols = len(grid), len(grid[0])
     # if rows != 4 and rows != 9: 
@@ -767,6 +850,8 @@ def sudokuSolver(board, legals, rowColLegalsList):
                     rowColLegalsList.append(cell)
             return None
 
+# getCell function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
 def getCell(app, x, y):
     dx = x - app.boardLeft
     dy = y - app.boardTop
@@ -777,18 +862,24 @@ def getCell(app, x, y):
         return (row, col)
     else:
         return None
-
+    
+# drawBoard function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
 def drawBoard(app):
     for row in range(app.rows):
         for col in range(app.cols):
             drawCell(app, row, col)  
 
+# drawBoardBorder function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
 def drawBoardBorder(app):
   # draw the board outline (with double-thickness):
   drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
            fill=None, border='black',
            borderWidth=2*app.cellBorderWidth)
 
+# drawCell function modified from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
 def drawCell(app, row, col):
     cellLeft, cellTop = getCellLeftTop(app, row, col)
     cellWidth, cellHeight = getCellSize(app)
@@ -827,12 +918,17 @@ def drawCell(app, row, col):
                 elif num == 9:
                     drawLabel('9', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
 
+# getCellLeftTop function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+
 def getCellLeftTop(app, row, col):
     cellWidth, cellHeight = getCellSize(app)
     cellLeft = app.boardLeft + col * cellWidth
     cellTop = app.boardTop + row * cellHeight
     return (cellLeft, cellTop)
 
+# getCellSize function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
 def getCellSize(app):
     cellWidth = app.boardWidth / app.cols
     cellHeight = app.boardHeight / app.rows
