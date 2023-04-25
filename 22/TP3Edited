@@ -28,6 +28,7 @@ from PIL import Image
 # citations
 # coin number updates 
 # directions button (app.directionsWhenGameStartedPartOne & app.directionsPartTwo)
+# all the code for saving as PDF
 
 class State: 
     def __init__(self, board, legals, notLegals, selection):
