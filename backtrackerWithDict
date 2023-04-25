@@ -1,0 +1,76 @@
+def solveSudoku(app, board, legals):
+    allRegions = app.state.getAllRegions()
+    for row in range(len(allRegions)):
+        allRegions[row] = set(allRegions[row])
+    regionsDict = dict()
+    for region in allRegions:
+        for cell in region:
+            if cell not in regionsDict:
+                if legals[cell[0]][cell[1]] != set():
+                    tempList = []
+                    tempRow = set(app.state.getRowRegion(board, cell[0])[1])
+                    tempList.append(tempRow)
+                    tempCol = set(app.state.getColRegion(board, cell[1])[1])
+                    tempList.append(tempCol)
+                    tempBlock = set(app.state.getBlockRegion(board, cell[0], cell[1])[1])
+                    tempList.append(tempBlock)
+                    regionsDict[cell] = tempList
+    print(regionsDict)
+    rows, cols = len(board), len(board[0]) 
+    rowColLegalsList = []
+    for row in range(rows):
+        for col in range(cols): 
+            if legals[row][col] != set(): 
+                rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
+    rowColLegalsList.sort()
+    rowColLegalsList.reverse()
+    return sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+
+def sudokuSolver(board, legals, rowColLegalsList, regionsDict):
+    if rowColLegalsList == []:
+        return board
+    else:
+        legalSetLength, legalsSet, row, col = rowColLegalsList[-1]
+        for num in legalsSet:
+            if len(legalsSet) == 1:
+                board[row][col]  = num
+                rowColLegalsList.pop()
+                tuplesToRemoveFrom = []
+                for cellRegion in regionsDict[(row, col)]: 
+                    for cell in cellRegion: 
+                         for tupleSet in rowColLegalsList: 
+                             if (tupleSet[2], tupleSet[3]) == cell: 
+                                if num in tupleSet[1]: 
+                                    tupleSet[1].remove(num) 
+                                    tuplesToRemoveFrom.append(tupleSet)   
+                solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                if solution != None:
+                    return solution
+                board[row][col] = 0
+                rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                for t in tuplesToRemoveFrom:
+                    for tupleSet in rowColLegalsList:
+                        if t == tupleSet:
+                            tupleSet[1].add(num)
+            else: 
+                if isLegalSudoku(board):
+                    board[row][col]  = num
+                    rowColLegalsList.pop()
+                    tuplesToRemoveFrom = []
+                    for cellRegion in regionsDict[(row, col)]: 
+                        for cell in cellRegion: 
+                            for tupleSet in rowColLegalsList: 
+                                if (tupleSet[2], tupleSet[3]) == cell: 
+                                    if num in tupleSet[1]: 
+                                        tupleSet[1].remove(num) 
+                                        tuplesToRemoveFrom.append(tupleSet)   
+                    solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                    if solution != None:
+                        return solution
+                    board[row][col] = 0
+                    rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                    for t in tuplesToRemoveFrom:
+                        for tupleSet in rowColLegalsList:
+                            if t == tupleSet:
+                                tupleSet[1].add(num)
+        return None
