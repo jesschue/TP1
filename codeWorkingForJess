@@ -1,0 +1,754 @@
+from cmu_graphics import * 
+import math 
+import random
+import os
+import copy
+import itertools
+
+class State:
+
+    def __init__(self, board, legals, notLegals, selection):
+        self.board = board
+        self.legals = legals
+        self.notLegals = notLegals
+        self.selection = selection
+        rows, cols = len(self.board), len(self.board[0])
+        for row in range(rows):
+            for col in range(cols):
+                if self.board[row][col] == 0:
+                    tempRow = self.getRowRegion(self.board, row)
+                    tempCol = self.getColRegion(self.board, col)
+                    tempBlock = self.getBlockRegion(self.board, row, col)
+                    for num in range(1, 10):
+                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                            self.legals[row][col].add(num)
+                        else:
+                            self.notLegals[row][col].add(num)
+        self.tempLegalsHint1Level1 = copy.deepcopy(self.legals)
+        self.tempLegalsHint1Level2 = copy.deepcopy(self.legals)
+        self.tempLegalsHint2Level1 = copy.deepcopy(self.legals)
+        self.allRegions = self.getAllRegions()
+
+    def ban(self, row, col, value):
+        # take out of self.legals and put into self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        
+        for location in currZeroesIndexes:
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
+            self.notLegals[location[0]][location[1]].add(value)
+
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def unban(self, row, col, value):
+        # put into self.legals and take out of self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempBlock, currZeroesIndexes)
+
+        for location in currZeroesIndexes:
+            self.legals[location[0]][location[1]].add(value)
+            if value in self.notLegals[location[0]][location[1]]: 
+                self.notLegals[location[0]][location[1]].remove(value)
+    
+    def currZeroesIndexesUnBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def getHint1Cell(self, legals):
+        hint1Cell = None
+        for row in range(len(legals)):
+            for col in range(len(legals[0])):
+                if len(legals[row][col]) == 1:
+                    hint1Cell = (row, col)
+                    return hint1Cell
+        return None
+
+    def getAllRegions(self):
+        allRegions = []
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                rowRegion = self.getRowRegion(self.legals, row)
+                if rowRegion[1] not in allRegions:
+                    allRegions.append(rowRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                colRegion = self.getColRegion(self.legals, col)
+                if colRegion[1] not in allRegions:
+                    allRegions.append(colRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                blockRegion = self.getBlockRegion(self.legals, row, col)
+                if blockRegion[1] not in allRegions:
+                    allRegions.append(blockRegion[1])
+        return allRegions
+
+    def getHint2Level1(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                if values != None and targets != None:
+                    self.getBansForAllRegions(values, targets, self.tempLegalsHint2Level1)
+                    return values, targets
+        return None, None
+
+    def getHint2Level2(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                if values != None and targets != None:
+                    self.getBansForAllRegions(values, targets, self.legals)
+                    return values, targets
+        return None, None
+
+    def applyRule2(self, region, N):
+        L = [i for i in range(1, 10)]
+        for M in itertools.combinations(region, N):
+            legalsSet = set()
+            breakOut = False
+            for cell in M:
+                if self.legals[cell[0]][cell[1]] == set() or len(self.legals[cell[0]][cell[1]]) == 1:
+                    breakOut = True # cannot have hint w/ already given values --> break out of loop + create new combo of cells -- NOT WORKING?
+                else:
+                    legalsSet = legalsSet.union(self.legals[cell[0]][cell[1]])
+            # breaking into here, but i don't want it to go into this for loop
+            if not breakOut:
+                for B in itertools.combinations(L, len(M)):
+                    possibleValuesSet = set(B)
+                    if legalsSet == possibleValuesSet:
+                        return possibleValuesSet, M
+        return None, None
+
+    def getBansForAllRegions(self, values, targets, location):
+        # The values (to ban) can stay in the targets, but they must be
+        # banned from all other cells in all regions that contain all
+        # the targets
+        for region in self.getAllRegionsThatContainTargets(targets):
+            for cell in region:
+                if cell not in targets:
+                    for value in values:
+                        if value in location[cell[0]][cell[1]] and len(location[cell[0]][cell[1]]) > 1:
+                            location[cell[0]][cell[1]].remove(value)
+
+    def getAllRegionsThatContainTargets(self, targets):
+        regionList = []
+        for region in self.allRegions:
+            for target in targets:
+                if target in region:
+                    regionList.append(region)
+        return regionList
+
+    def getRowRegion(self, location, row):
+        rows, cols = len(location), len(location[0])
+        valuesList = location[row]
+        coordsList = []
+        for col in range(cols):
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getColRegion(self, location, col):
+        rows, cols = len(location), len(location[0])
+        valuesList = []
+        coordsList = []
+        for row in range(rows):
+            valuesList.append(location[row][col])
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlockRegion(self, location, row, col):
+        rows, cols = None, None
+        blockNum = self.getBlock(row, col)
+        valuesList = []
+        coordsList = []
+        if blockNum == 0 or blockNum == 1 or blockNum == 2:
+            rows = (0, 3)
+        elif blockNum == 3 or blockNum == 4 or blockNum == 5:
+            rows = (3, 6)
+        elif blockNum == 6 or blockNum == 7 or blockNum == 8:
+            rows = (6, 9)
+        if blockNum == 0 or blockNum == 3 or blockNum == 6:
+            cols = (0, 3)
+        elif blockNum == 1 or blockNum == 4 or blockNum == 7:
+            cols = (3, 6)
+        elif blockNum == 2 or blockNum == 5 or blockNum == 8:
+            cols = (6, 9)
+        for row in range(rows[0], rows[1]):
+            for col in range(cols[0], cols[1]):
+                valuesList.append(location[row][col])
+                coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlock(self, row, col): # block number
+        if 0 <= row <= 2 and 0 <= col <= 2:
+            blockNum = 0
+        elif 0 <= row <= 2 and 3 <= col <= 5:
+            blockNum = 1
+        elif 0 <= row <= 2 and 6 <= col <= 8:
+            blockNum = 2
+        elif 3 <= row <= 5 and 0 <= col <= 2:
+            blockNum = 3
+        elif 3 <= row <= 5 and 3 <= col <= 5:
+            blockNum = 4
+        elif 3 <= row <= 5 and 6 <= col <= 8:
+            blockNum = 5
+        elif 6 <= row <= 8 and 0 <= col <= 2:
+            blockNum = 6
+        elif 6 <= row <= 8 and 3 <= col <= 5:
+            blockNum = 7
+        elif 6 <= row <= 8 and 6 <= col <= 8:
+            blockNum = 8
+        return blockNum
+    
+def onAppStart(app):
+    app.rows = 9
+    app.cols = 9
+    app.boardLeft = 50
+    app.boardTop = 70
+    app.boardWidth = app.width - 100
+    app.boardHeight = app.height - 125
+    app.cellBorderWidth = 2
+    # FOR KEEPING TRACK OF WHICH SCREEN & OTHER GAME COMPONENTS
+    # booleans
+    app.characterPopUp = False
+    app.enterValue = False
+    app.gameHasStarted = True
+    app.characterSelectScreen = False 
+    app.chooseDifficultyScreen = False 
+    app.directionsPartOne = False 
+    app.directionsPartTwo = False 
+    app.gameIsOver = False
+    app.playScreen = True
+    app.openShop = False
+    app.sudokuPage = True
+    app.showLegals = False
+    app.toggleNormal = True
+    app.toggleLegals = False
+    app.numberOfToggles = 0
+    app.previousLegalsKey = None
+    app.statesList = []
+    app.currentState = None
+    # other values
+    app.numberOfIncorrect = 0
+    app.numberOfHints = 5
+    app.numberOfMoves = 0
+    app.selection = None
+    app.currentGuess = None
+    app.chosenCharacter = None 
+    app.chosenLevel = None
+    app.wrongCell = None
+    app.userInputtedValues = set()
+    # HINTS
+    app.hint1Level1 = False
+    app.hint1Level2 = False
+    app.hint1Cell = None
+
+    app.hint2Level1 = False
+    app.hint2Level2 = False
+    app.hint2Cells = None
+
+    # app.chosenBoard = None
+    app.chosenCharacter = None  
+    app.numberOfCoins = 0
+    app.characterScreenMessage = None
+    getChosenBoard(app)
+
+def getChosenBoard(app):
+    board = [[6, 0, 0, 1, 3, 2, 4, 0, 9], [7, 3, 4, 0, 0, 0, 0, 6, 0], [2, 1, 0, 0, 6, 0, 0, 0, 8], [9, 0, 6, 8, 0, 0, 0, 4, 5], [8, 5, 1, 3, 0, 0, 7, 0, 0], [0, 0, 0, 2, 0, 0, 0, 0, 1], [0, 0, 0, 4, 0, 0, 0, 0, 3], [3, 4, 0, 9, 0, 5, 0, 8, 0], [1, 9, 0, 6, 8, 0, 0, 5, 0]]
+    rows, cols = len(board), len(board)
+    legals = [[] * cols for _ in range(rows)]
+    for row in range(rows):
+        for num in range(9):
+            legals[row].append(set())
+    notLegals = copy.deepcopy(legals)
+    app.currentState = State(board, legals, notLegals, None)
+    app.statesList.append(app.currentState)
+    app.currentState = copy.deepcopy(app.currentState)
+    app.solution = solveSudoku(copy.deepcopy(app.currentState.board), app.currentState.legals)
+    # return app.chosenBoard
+
+# lightPurple cell selection: https://htmlcolorcodes.com/colors/light-violet/
+# red background (mario): https://convertingcolors.com/rgb-color-255_204_203.html
+
+def redrawAll(app):
+    if app.gameHasStarted:
+        if app.sudokuPage:
+            # drawRect(0, 0, 750, 750, fill = rgb(255, 79, 75))
+            drawRect(100, 15, 175, 40, fill = 'blue')
+            drawLabel('OPEN ITEM SHOP', 187, 35, fill = 'white', align = 'center', size = 16)
+            drawRect(300, 15, 175, 40, fill = 'blue')
+            drawLabel('OPEN DIRECTIONS', 387, 35, fill = 'white', align = 'center', size = 16)
+            if 0 <= app.numberOfIncorrect < 5:
+                drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+            drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+            for num in range(1, 6):
+                drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+            drawCircle(35, 30, 13, fill = 'yellow', border = 'black')
+            drawLabel(app.numberOfCoins, 70, 30, size = 20)
+            drawRect(50, 705, 175, 30, fill = 'blue')
+            drawLabel('TOGGLE LEGALS', 137, 720, fill = 'white', size = 16, align = 'center')
+            drawRect(250, 705, 175, 30, fill = 'blue')
+            drawLabel('SOLVE BOARD', 337, 720, fill = 'white', size = 16, align = 'center')
+            drawRect(450, 705, 250, 30, fill = 'blue')
+            if app.numberOfToggles == 0:
+                drawLabel('TOGGLE NORMAL/CANDIDATE', 575, 720, fill = 'white', size = 16, align = 'center')
+            elif app.numberOfToggles % 2 == 1:
+                drawLabel('ENTERING CANDIDATES', 575, 720, fill = 'white', size = 16, align = 'center', bold = True)
+            elif app.numberOfToggles % 2 == 0:
+                drawLabel('ENTERING NORMAL VALUES', 575, 720, fill = 'white', size = 16, align = 'center', bold = True)
+            # imageWidth, imageHeight = getImageSize(app.characterHealthHeart)
+            # drawImage(app.characterHealthHeart, 550, 30, width=imageWidth//35,
+            # height=imageHeight//35, align = 'center')
+            drawBoard(app)
+            for i in range(1, 3):
+                drawLine(app.boardLeft + 72 * 3 * i, app.boardTop, app.boardLeft + 72 * 3 * i, app.boardTop + 72 * 8.65, fill = 'black', lineWidth = 6.8)
+                drawLine(app.boardLeft, app.boardTop + 72 * 2.9 * i, app.boardLeft + 72 * 9, app.boardTop + 72 * 2.9 * i, fill = 'black', lineWidth = 6.8)
+            drawBoardBorder(app)
+
+def hint2Level1(app):
+    if app.hint2Level1:
+        values, app.hint2Cells = app.currentState.getHint2Level1()
+
+def hint2Level2(app):
+    if app.hint2Level2:
+        values, app.hint2Cells = app.currentState.getHint2Level2()
+
+def hint1Level1(app):
+    if app.hint1Level1:
+        app.hint1Cell = app.currentState.getHint1Cell(app.currentState.tempLegalsHint1Level1)
+        if app.hint1Cell == None:
+            app.hint1Level1 = not app.hint1Level1
+
+def hint1Level2(app):
+    if app.hint1Level2:
+        app.hint1Cell = app.currentState.getHint1Cell(app.currentState.tempLegalsHint1Level2)
+        if app.hint1Cell != None:
+            row, col = app.hint1Cell[0], app.hint1Cell[1]
+            app.hint1Level2Value = app.currentState.tempLegalsHint1Level2[row][col].pop()
+    else:
+        if app.hint1Cell != None:
+            row, col = app.hint1Cell[0], app.hint1Cell[1]
+            app.currentState.board[row][col] = app.hint1Level2Value
+            app.currentState.ban(row, col, app.currentState.board[row][col])
+            app.currentState.tempLegalsHint1Level2[row][col] = set()
+
+def onMousePress(app, mouseX, mouseY):
+    if app.gameHasStarted: 
+        if app.enterValue == False:
+            selectedCell = getCell(app, mouseX, mouseY)
+            if selectedCell != None:
+                if selectedCell == app.selection:
+                    app.selection = None
+                else:
+                    app.selection = selectedCell
+            app.currentGuess = None
+        if 100 <= mouseX <= 275 and 15 <= mouseY <= 55: 
+            app.openShop = True
+            app.sudokuPage = False
+        if app.openShop: 
+            if 25 <= mouseX <= 228 and 638 <= mouseY <= 722: 
+                app.sudokuPage = True 
+                app.openShop = False
+            if 487 <= mouseX <= 718 and 340 <= mouseY <= 400: 
+                app.numberOfCoins -= 300 
+            if 487 <= mouseX <= 718 and 485 <= mouseY <= 545: 
+                app.numberOfCoins -= 500 
+                if app.numberOfIncorrect > 0: 
+                    app.numberOfIncorrect -= 1
+            if 487 <= mouseX <= 718 and 640 <= mouseY <= 700: 
+                app.numberOfCoins -= 250
+        if 50 <= mouseX <= 225 and 705 <= mouseY <= 735:
+            app.showLegals = not app.showLegals
+        if 250 <= mouseX <= 425 and 705 <= mouseY <= 735:
+            app.currentState.board = solveSudoku(app.currentState.board, app.legals)
+            app.gameIsOver = True
+        if 450 <= mouseX <= 700 and 705 <= mouseY <= 735:
+            app.toggleNormal = not app.toggleNormal
+            app.toggleLegals = not app.toggleLegals
+            app.numberOfToggles += 1
+            # app.characterPopUp = True
+        if 300 <= mouseX <= 475 and 15 <= mouseY <= 55:
+            app.numberOfHints -= 1
+            app.currentState = app.statesList[app.numberOfMoves - 1]
+    else:
+        if app.playScreen: 
+            if (225 <= mouseX <= 500 and 
+                315 <= mouseY <= 475):  
+                app.directionsPartOne = True 
+                app.playScreen = False
+        if app.characterSelectScreen:
+            if distance(mouseX, mouseY, 243, 508) <= 80: 
+                app.chosenCharacter = app.rosalina
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 520, 508) <= 80: 
+                app.chosenCharacter = app.toadette 
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 107, 660) <= 80:
+                app.chosenCharacter = app.mario
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 385, 660) <= 80: 
+                app.chosenCharacter = app.koopaTroopa
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 630, 660) <= 80: 
+                app.chosenCharacter = app.luigi
+                app.characterScreenMessage = None
+            if (227 <= mouseX <= 515 and 48 <= mouseY <= 150 
+                and app.chosenCharacter != None): 
+                app.chooseDifficultyScreen = True 
+                app.sudokuPage = True
+                app.characterSelectScreen = False 
+                app.directionsPartOne = False 
+                app.directionsPartTwo = False
+            elif (227 <= mouseX <= 515 and 48 <= mouseY <= 150 
+                and app.chosenCharacter == None):
+                app.characterScreenMessage = 'You need to choose a character to continue!'
+        if app.chooseDifficultyScreen: 
+            if 125 <= mouseX <= 350 and 150 <= mouseY <= 250: 
+                app.chosenLevel = 'easy'
+                getChosenBoard(app)
+                app.gameHasStarted = True
+                app.sudokuPage = True 
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+            elif 400 <= mouseX <= 625 and 150 <= mouseY <= 250: 
+                app.chosenLevel = 'medium'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+            elif 125 <= mouseX <= 350 and 300 <= mouseY <= 400: 
+                app.chosenLevel = 'hard'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+            elif 400 <= mouseX <= 625 and 300 <= mouseY <= 400: 
+                app.chosenLevel = 'expert'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+            elif 265 <= mouseX <= 485 and 450 <= mouseY <= 550: 
+                app.chosenLevel = 'evil'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+            
+def onKeyPress(app, key):
+    if app.gameHasStarted:
+        if app.toggleNormal:
+            if app.selection != None:
+                app.enterValue = True
+                if key != '0' and key.isdigit() and key != 'enter' and key != 'backspace': 
+                    app.currentGuess = int(key)
+                if key == 'backspace': 
+                    app.wrongCell = None
+                    app.currentGuess = None
+                    app.enterValue = False
+                if key == 'enter' and app.currentGuess != None:
+                    app.currentState.board[app.selection[0]][app.selection[1]] = app.currentGuess
+                    if app.currentState.board[app.selection[0]][app.selection[1]] != app.solution[app.selection[0]][app.selection[1]]:
+                        # KEEP TRACK OF WHAT HAPPENS WHEN THEY GET SMTH WRONG
+                        app.currentState.board[app.selection[0]][app.selection[1]] = 0
+                        app.numberOfIncorrect += 1
+                        app.wrongCell = (app.selection[0], app.selection[1])
+                        return
+                    app.numberOfMoves += 1
+                    print(app.numberOfMoves)
+                    app.userInputtedValues.add((app.selection[0], app.selection[1]))
+                    app.currentState.ban(app.selection[0], app.selection[1], app.currentState.board[app.selection[0]][app.selection[1]])
+                    app.statesList.append(app.currentState)
+                    app.currentState = copy.deepcopy(app.currentState)
+                    checkGameOver(app)
+                    app.enterValue = False
+        elif app.toggleLegals:
+            if app.selection != None:
+                app.enterValue = True
+                if key != '0' and key.isdigit() and key != 'enter' and key != 'backspace': 
+                    app.currentState.legals[app.selection[0]][app.selection[1]].add(int(key))
+                    app.previousLegalsKey = key
+                    app.enterValue = False
+                if key == 'backspace':
+                    if int(app.previousLegalsKey) in app.currentState.legals[app.selection[0]][app.selection[1]]:
+                        app.currentState.legals[app.selection[0]][app.selection[1]].remove(int(app.previousLegalsKey))
+                    app.enterValue = False
+        if key == 's':
+            app.enterValue = False
+            for row in range(len(app.currentState.legals)):
+                for col in range(len(app.currentState.legals[0])):
+                    if len(app.currentState.legals[row][col]) == 1:
+                        app.currentState.board[row][col] = int(app.currentState.legals[row][col].pop())
+                        app.enterValue = False
+                        return
+        elif key == 'S':
+            app.enterValue = False
+            for row in range(len(app.currentState.legals)):
+                for col in range(len(app.currentState.legals[0])):
+                    if len(app.currentState.legals[row][col]) == 1:
+                        app.currentState.board[row][col] = int(app.currentState.legals[row][col].pop())
+                        app.enterValue = False
+        if key == 'a':
+            app.enterValue = False
+            if not app.hint1Level1:
+                app.hint1Level1 = True
+                hint1Level1(app)
+            else:
+                app.hint1Level1 = False
+                if app.hint1Cell != None:
+                    app.currentState.tempLegalsHint1Level1[app.hint1Cell[0]][app.hint1Cell[1]] = set()
+                app.hint1Cell = None
+                hint1Level1(app)
+        elif key == 'b':
+            app.enterValue = False
+            if not app.hint1Level2:
+                app.hint1Level2 = True
+                hint1Level2(app)
+            else:
+                app.hint1Level2 = False
+                hint1Level2(app)
+        elif key == 'c': # SOME PROBLEMS W/ HINT 2 LEVEL 1
+            app.enterValue = False
+            if not app.hint2Level1:
+                app.hint2Level1 = True
+                hint2Level1(app)
+            else:
+                app.hint2Level1 = False
+                app.hint2Cells = None
+                hint2Level1(app)
+        elif key == 'd':
+            app.enterValue = False
+            if not app.hint2Level2:
+                app.hint2Level2 = True
+                hint2Level2(app)
+            else:
+                app.hint2Level2 = False
+                hint2Level2(app)
+    else: 
+        if app.directionsPartOne: 
+            if key == 'n': 
+                app.directionsPartTwo = True
+                app.directionsPartOne = False 
+        if app.directionsPartTwo: 
+            if key == 'c': 
+                app.characterSelectScreen = True
+                app.directionsPartOne = False
+                app.directionsPartTwo = False 
+
+def checkGameOver(app):
+    rows, cols = len(app.currentState.board), len(app.currentState.board[0])
+    for row in range(app.rows):
+        for col in range(app.cols):
+            if app.currentState.board[row][col] == 0:
+                return False
+                break
+        app.gameIsOver = True
+        break
+    return True
+
+def areLegalValues(L): 
+    seen = [] 
+    for i in range(len(L)): 
+        if (type(L[i])) != int:
+            return False 
+        if L[i] < 0 or L[i] > len(L): 
+            return False 
+        if L[i] != 0 and L[i] in seen: 
+            return False 
+        seen.append(L[i])
+    return True
+ 
+def isLegalRow(grid, row): 
+    return areLegalValues(grid[row])
+
+def isLegalCol(grid, col): 
+    rows = len(grid)
+    values = [grid[row][col] for row in range(rows)]
+    return areLegalValues(values)
+    
+def isLegalBlock(grid, block): 
+    blockSize = rounded(len(grid)**0.5)
+    startRow = block//blockSize * blockSize
+    startCol = block % blockSize * blockSize
+    values = [] 
+    for drow in range(blockSize): 
+        for dcol in range(blockSize): 
+            row, col = startRow + drow, startCol + dcol 
+            values.append(grid[row][col])
+    return areLegalValues(values)
+    
+def isLegalSudoku(grid):
+    rows, cols = len(grid), len(grid[0])
+    for row in range(rows): 
+        if not isLegalRow(grid, row): 
+            return False 
+    for col in range(cols): 
+        if not isLegalCol(grid, col): 
+            return False
+    blocks = rows 
+    for block in range(blocks): 
+        if not isLegalBlock(grid, block): 
+            return False 
+    return True
+
+def solveSudoku(board, legals):
+    result = copy.deepcopy(board)
+    rows, cols = len(board), len(board[0])
+    rowColLegalsList = []
+    for row in range(rows):
+        for col in range(cols):
+            if legals[row][col] != set(): 
+                rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
+                rowColLegalsList.sort()
+                rowColLegalsList.reverse()
+    return sudokuSolver(result, legals, rowColLegalsList)
+
+def sudokuSolver(board, legals, rowColLegalsList):
+    if rowColLegalsList == []:
+        return board
+    else:
+        for cell in rowColLegalsList[::-1]:
+            for legal in cell[1]:
+                if isLegalSudoku(board):
+                    board[cell[2]][cell[3]] = legal
+                    rowColLegalsList.pop()
+                    solution = sudokuSolver(board, legals, rowColLegalsList)
+                    if solution != None:
+                        return solution
+                    board[cell[2]][cell[3]] = 0
+                    rowColLegalsList.append(cell)
+            return None
+
+def getCell(app, x, y):
+    dx = x - app.boardLeft
+    dy = y - app.boardTop
+    cellWidth, cellHeight = getCellSize(app)
+    row = math.floor(dy / cellHeight)
+    col = math.floor(dx / cellWidth)
+    if (0 <= row < app.rows) and (0 <= col < app.cols):
+        return (row, col)
+    else:
+        return None
+
+def drawBoard(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            drawCell(app, row, col)  
+
+def drawBoardBorder(app):
+  # draw the board outline (with double-thickness):
+  drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
+           fill=None, border='black',
+           borderWidth=2*app.cellBorderWidth)
+
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.currentState.board[row][col] == 0:
+        if app.hint1Level1 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else 'white'
+        elif app.hint1Level2 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else 'white'
+        elif app.hint2Level1 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else 'white'
+        elif app.hint2Level2 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else 'white'
+        else:
+            color = rgb(207, 159, 255) if (row, col) == app.selection else 'white'
+            if (row, col) == app.wrongCell:
+                color = 'red'
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=color, border='black', borderWidth=app.cellBorderWidth)
+        if app.hint1Level2 == True and app.hint1Cell == (row, col):
+            drawLabel(app.hint1Level2Value, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width // 20, fill = 'black', align='center')
+    else:
+        if (row, col) not in app.userInputtedValues:
+            color = 'lightGray'
+        else: color = None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=color, border='black', borderWidth=app.cellBorderWidth)
+    if app.currentState.board[row][col] != 0:
+        drawLabel(app.currentState.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width//20, fill = 'black', align='center')
+    else:
+        if (row, col) == app.selection and app.currentGuess != None and app.currentState.board[row][col] == 0:
+            drawLabel(app.currentGuess, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width//20, fill = 'black', align='center')
+        else:
+            if app.showLegals:
+                if app.hint1Level1 == True or (app.hint1Cell != None and (row, col) != (app.hint1Cell[0], app.hint1Cell[1])) or app.hint1Cell == None:
+                    for num in app.currentState.legals[row][col]:
+                        if num == 1:
+                            drawLabel('1', cellLeft + app.width // 75, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 2:
+                            drawLabel('2', cellLeft + (app.width // 75)*3.5, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 3:
+                            drawLabel('3', cellLeft + (app.width // 75)*6, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 4:
+                            drawLabel('4', cellLeft + app.width // 75, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 5:
+                            drawLabel('5', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 6:
+                            drawLabel('6', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 7:
+                            drawLabel('7', cellLeft + app.width // 75, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                        elif num == 8:
+                            drawLabel('8', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                        elif num == 9:
+                            drawLabel('9', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                        
+def getCellLeftTop(app, row, col):
+    cellWidth, cellHeight = getCellSize(app)
+    cellLeft = app.boardLeft + col * cellWidth
+    cellTop = app.boardTop + row * cellHeight
+    return (cellLeft, cellTop)
+
+def getCellSize(app):
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    return (cellWidth, cellHeight)
+        
+def main():
+    runApp(750, 750)
+main()
