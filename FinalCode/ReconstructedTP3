@@ -48,10 +48,88 @@ class State:
                             self.legals[row][col].add(num)
                         else:
                             self.notLegals[row][col].add(num)
+        allRegions = self.getAllRegions()
+        self.solution = self.solveSudoku(copy.deepcopy(self.board))
+        print(self.solution)
         self.tempLegalsHint1Level1 = copy.deepcopy(self.legals)
         self.tempLegalsHint1Level2 = copy.deepcopy(self.legals)
         self.tempLegalsHint2Level1 = copy.deepcopy(self.legals)
-        self.allRegions = self.getAllRegions()
+
+    def solveSudoku(self, board):
+        allRegions = self.getAllRegions()
+        for row in range(len(allRegions)):
+            allRegions[row] = set(allRegions[row])
+        regionsDict = dict()
+        for region in allRegions:
+            for cell in region:
+                if cell not in regionsDict:
+                    if self.legals[cell[0]][cell[1]] != set():
+                        tempList = []
+                        tempRow = set(self.getRowRegion(board, cell[0])[1])
+                        tempList.append(tempRow)
+                        tempCol = set(self.getColRegion(board, cell[1])[1])
+                        tempList.append(tempCol)
+                        tempBlock = set(self.getBlockRegion(board, cell[0], cell[1])[1])
+                        tempList.append(tempBlock)
+                        regionsDict[cell] = tempList
+        rows, cols = len(self.board), len(board[0]) 
+        rowColLegalsList = []
+        for row in range(rows):
+            for col in range(cols): 
+                if self.legals[row][col] != set(): 
+                    rowColLegalsList.append((len(self.legals[row][col]), self.legals[row][col], row, col))
+        rowColLegalsList.sort()
+        rowColLegalsList.reverse()
+        return self.sudokuSolver(board, self.legals, rowColLegalsList, regionsDict)
+
+    def sudokuSolver(self, board, legals, rowColLegalsList, regionsDict):
+        if rowColLegalsList == []:
+            return board
+        else:
+            legalSetLength, legalsSet, row, col = rowColLegalsList[-1]
+            for num in legalsSet:
+                if len(legalsSet) == 1:
+                    board[row][col] = num
+                    rowColLegalsList.pop()
+                    tuplesToRemoveFrom = []
+                    for cellRegion in regionsDict[(row, col)]: 
+                        for cell in cellRegion: 
+                            for tupleSet in rowColLegalsList:
+                                if (tupleSet[2], tupleSet[3]) == cell: 
+                                    if num in tupleSet[1]: 
+                                        tupleSet[1].remove(num) 
+                                        tuplesToRemoveFrom.append(tupleSet)   
+                    solution = self.sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                    if solution != None:
+                        return solution
+                    board[row][col] = 0
+                    rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                    for t in tuplesToRemoveFrom:
+                        for tupleSet in rowColLegalsList:
+                            if t == tupleSet:
+                                tupleSet[1].add(num)
+                else: 
+                    if isLegalSudoku(board):
+                        board[row][col]  = num
+                        rowColLegalsList.pop()
+                        tuplesToRemoveFrom = []
+                        for cellRegion in regionsDict[(row, col)]: 
+                            for cell in cellRegion: 
+                                for tupleSet in rowColLegalsList: 
+                                    if (tupleSet[2], tupleSet[3]) == cell: 
+                                        if num in tupleSet[1]: 
+                                            tupleSet[1].remove(num) 
+                                            tuplesToRemoveFrom.append(tupleSet)   
+                        solution = self.sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                        if solution != None:
+                            return solution
+                        board[row][col] = 0
+                        rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                        for t in tuplesToRemoveFrom:
+                            for tupleSet in rowColLegalsList:
+                                if t == tupleSet:
+                                    tupleSet[1].add(num)
+            return None
 
     def ban(self, row, col, value):
         # take out of self.legals and put into self.notLegals
@@ -418,15 +496,16 @@ def getChosenBoard(app): ###
     # chosenBoardPathAsString = readFile(chosenBoardPathTitle)
     # app.chosenBoard = makeInto2dList(chosenBoardPathAsString)
     # app.chosenBoard = [[9, 0, 0, 0, 3, 8, 0, 7, 0], [0, 0, 0, 6, 0, 0, 0, 0, 8], [0, 3, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 8, 0, 0, 0, 0, 0], [0, 0, 2, 0, 0, 0, 0, 9, 0], [0, 6, 0, 0, 5, 4, 0, 0, 7], [0, 0, 0, 0, 1, 0, 0, 0, 0], [6, 0, 0, 0, 0, 0, 5, 0, 0], [0, 5, 0, 0, 7, 3, 0, 0, 4]]
-    board = makeInto2dList('''3 0 8 9 0 0 0 1 0
-0 2 9 0 0 5 7 0 0
-0 6 1 0 0 0 0 2 0
-0 3 0 4 0 0 1 5 7
-0 4 5 0 1 0 0 0 0
-0 0 6 0 0 3 2 0 0
-0 0 0 5 0 0 0 0 0
-2 0 0 0 0 0 0 3 0
-6 0 0 0 0 7 0 0 9''')
+    board = makeInto2dList('''0 1 0 8 0 4 9 0 0
+0 0 4 0 5 0 0 0 0
+0 0 0 0 2 0 0 0 8
+0 0 3 4 0 9 0 0 6
+0 2 0 0 0 0 0 3 0
+0 0 0 0 0 5 0 0 0
+0 0 0 0 8 0 0 0 0
+7 0 0 0 0 0 1 0 0
+0 0 2 6 0 3 0 0 9''')
+    print(board)
     rows, cols = len(board), len(board[0])
     legals = [[] * cols for _ in range(rows)]
     for row in range(rows):
@@ -436,6 +515,7 @@ def getChosenBoard(app): ###
     app.currentState = State(board, legals, notLegals, None)
     app.statesList.append(app.currentState)
     app.currentState = copy.deepcopy(app.currentState)
+    # app.solution = [[3, 5, 8, 4, 7, 6, 1, 2, 9], [4, 9, 6, 8, 2, 1, 3, 5, 7], [7, 1, 2, 3, 9, 5, 6, 8, 4], [2, 6, 5, 1, 3, 9, 7, 4, 8], [9, 3, 4, 6, 8, 7, 5, 1, 2], [8, 7, 1, 2, 5, 4, 9, 6, 3], [6, 8, 9, 5, 4, 3, 2, 7, 1], [1, 4, 3, 7, 6, 2, 8, 9, 5], [5, 2, 7, 9, 1, 8, 4, 3, 6]]
     # return app.chosenBoard
 
 def makeInto2dList(givenBoard): 
@@ -864,8 +944,8 @@ def onMousePress(app, mouseX, mouseY):
         if 50 <= mouseX <= 225 and 705 <= mouseY <= 735:
             app.showLegals = not app.showLegals
         if 250 <= mouseX <= 425 and 705 <= mouseY <= 735:
-            app.currentState.board = solveSudoku(app, app.currentState.board, app.currentState.legals)
-            app.gameIsOver = True
+            app.currentState.board = app.currentState.solution
+            # app.gameIsOver = True
         if 450 <= mouseX <= 700 and 705 <= mouseY <= 735:
             app.toggleNormal = not app.toggleNormal
             app.toggleLegals = not app.toggleLegals
@@ -911,7 +991,6 @@ def onMousePress(app, mouseX, mouseY):
             if 125 <= mouseX <= 350 and 150 <= mouseY <= 250: 
                 app.chosenLevel = 'easy'
                 getChosenBoard(app)
-                # app.solution = solveSudoku(app, copy.deepcopy(app.currentState.board), copy.deepcopy(app.currentState.legals))
                 # print(testBacktracker(app, filters = []))
                 app.gameHasStarted = True
                 app.sudokuPage = True 
@@ -930,8 +1009,8 @@ def onMousePress(app, mouseX, mouseY):
                 app.characterSelectScreen = False
                 app.directionsPartOne = False
                 app.directionsPartTwo = False
-                app.sudokuPlaySound.play()
-                app.starterSound.pause()
+                # app.sudokuPlaySound.play()
+                # app.starterSound.pause()
             elif 125 <= mouseX <= 350 and 300 <= mouseY <= 400: 
                 app.chosenLevel = 'hard'
                 getChosenBoard(app)
@@ -941,8 +1020,8 @@ def onMousePress(app, mouseX, mouseY):
                 app.characterSelectScreen = False
                 app.directionsPartOne = False
                 app.directionsPartTwo = False
-                app.sudokuPlaySound.play()
-                app.starterSound.pause()
+                # app.sudokuPlaySound.play()
+                # app.starterSound.pause()
             elif 400 <= mouseX <= 625 and 300 <= mouseY <= 400: 
                 app.chosenLevel = 'expert'
                 getChosenBoard(app)
@@ -952,8 +1031,8 @@ def onMousePress(app, mouseX, mouseY):
                 app.characterSelectScreen = False
                 app.directionsPartOne = False
                 app.directionsPartTwo = False
-                app.sudokuPlaySound.play()
-                app.starterSound.pause()
+                # app.sudokuPlaySound.play()
+                # app.starterSound.pause()
             elif 265 <= mouseX <= 485 and 450 <= mouseY <= 550: 
                 app.chosenLevel = 'evil'
                 getChosenBoard(app)
@@ -963,8 +1042,8 @@ def onMousePress(app, mouseX, mouseY):
                 app.characterSelectScreen = False
                 app.directionsPartOne = False
                 app.directionsPartTwo = False
-                app.sudokuPlaySound.play()
-                app.starterSound.pause()
+                # app.sudokuPlaySound.play()
+                # app.starterSound.pause()
 
 def onKeyPress(app, key):
     if app.gameHasStarted:
@@ -979,8 +1058,8 @@ def onKeyPress(app, key):
                     app.enterValue = False
                 if key == 'enter' and app.currentGuess != None:
                     app.currentState.board[app.selection[0]][app.selection[1]] = app.currentGuess
-                    if not isLegalSudoku(app.currentState.board): ###
-                    # if app.currentState.board[app.selection[0]][app.selection[1]] != app.solution[app.selection[0]][app.selection[1]]:
+                    # if not isLegalSudoku(app.currentState.board): ###
+                    if app.currentState.board[app.selection[0]][app.selection[1]] != app.currentState.solution[app.selection[0]][app.selection[1]]:
                         app.currentState.board[app.selection[0]][app.selection[1]] = 0
                         app.numberOfIncorrect += 1
                         app.wrongCell = (app.selection[0], app.selection[1])
@@ -1092,7 +1171,7 @@ def onKeyPress(app, key):
                 app.directionsWhenGameStartedPartOne = False 
                 app.sudokuPage = False
     else: 
-        if app.directionsPartOne: 
+        if app.directionsPartOne:
             if key == 'n': 
                 app.directionsPartTwo = True
                 app.directionsPartOne = False 
@@ -1203,81 +1282,80 @@ def isLegalSudoku(grid):
 
 # (FASTER) BACKTRACKER
 
-def solveSudoku(app, board, legals):
-    allRegions = app.currentState.getAllRegions()
-    for row in range(len(allRegions)):
-        allRegions[row] = set(allRegions[row])
-    regionsDict = dict()
-    for region in allRegions:
-        for cell in region:
-            if cell not in regionsDict:
-                if legals[cell[0]][cell[1]] != set():
-                    tempList = []
-                    tempRow = set(app.currentState.getRowRegion(board, cell[0])[1])
-                    tempList.append(tempRow)
-                    tempCol = set(app.currentState.getColRegion(board, cell[1])[1])
-                    tempList.append(tempCol)
-                    tempBlock = set(app.currentState.getBlockRegion(board, cell[0], cell[1])[1])
-                    tempList.append(tempBlock)
-                    regionsDict[cell] = tempList
-    rows, cols = len(board), len(board[0]) 
-    rowColLegalsList = []
-    for row in range(rows):
-        for col in range(cols): 
-            if legals[row][col] != set(): 
-                rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
-    rowColLegalsList.sort()
-    rowColLegalsList.reverse()
-    return sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+# def solveSudoku(allRegions, board, legals):
+#     for row in range(len(allRegions)):
+#         allRegions[row] = set(allRegions[row])
+#     regionsDict = dict()
+#     for region in allRegions:
+#         for cell in region:
+#             if cell not in regionsDict:
+#                 if legals[cell[0]][cell[1]] != set():
+#                     tempList = []
+#                     tempRow = set(app.currentState.getRowRegion(board, cell[0])[1])
+#                     tempList.append(tempRow)
+#                     tempCol = set(app.currentState.getColRegion(board, cell[1])[1])
+#                     tempList.append(tempCol)
+#                     tempBlock = set(app.currentState.getBlockRegion(board, cell[0], cell[1])[1])
+#                     tempList.append(tempBlock)
+#                     regionsDict[cell] = tempList
+#     rows, cols = len(board), len(board[0]) 
+#     rowColLegalsList = []
+#     for row in range(rows):
+#         for col in range(cols): 
+#             if legals[row][col] != set(): 
+#                 rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
+#     rowColLegalsList.sort()
+#     rowColLegalsList.reverse()
+#     return sudokuSolver(board, legals, rowColLegalsList, regionsDict)
 
-def sudokuSolver(board, legals, rowColLegalsList, regionsDict):
-    if rowColLegalsList == []:
-        return board
-    else:
-        legalSetLength, legalsSet, row, col = rowColLegalsList[-1]
-        for num in legalsSet:
-            if len(legalsSet) == 1:
-                board[row][col]  = num
-                rowColLegalsList.pop()
-                tuplesToRemoveFrom = []
-                for cellRegion in regionsDict[(row, col)]: 
-                    for cell in cellRegion: 
-                         for tupleSet in rowColLegalsList:
-                             if (tupleSet[2], tupleSet[3]) == cell: 
-                                if num in tupleSet[1]: 
-                                    tupleSet[1].remove(num) 
-                                    tuplesToRemoveFrom.append(tupleSet)   
-                solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
-                if solution != None:
-                    return solution
-                board[row][col] = 0
-                rowColLegalsList.append((legalSetLength, legalsSet, row, col))
-                for t in tuplesToRemoveFrom:
-                    for tupleSet in rowColLegalsList:
-                        if t == tupleSet:
-                            tupleSet[1].add(num)
-            else: 
-                if isLegalSudoku(board):
-                    board[row][col]  = num
-                    rowColLegalsList.pop()
-                    tuplesToRemoveFrom = []
-                    for cellRegion in regionsDict[(row, col)]: 
-                        for cell in cellRegion: 
-                            for tupleSet in rowColLegalsList: 
-                                if (tupleSet[2], tupleSet[3]) == cell: 
-                                    if num in tupleSet[1]: 
-                                        tupleSet[1].remove(num) 
-                                        tuplesToRemoveFrom.append(tupleSet)   
-                    solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
-                    if solution != None:
-                        return solution
-                    board[row][col] = 0
-                    rowColLegalsList.append((legalSetLength, legalsSet, row, col))
-                    for t in tuplesToRemoveFrom:
-                        for tupleSet in rowColLegalsList:
-                            if t == tupleSet:
-                                tupleSet[1].add(num)
-        return None
+# def sudokuSolver(board, legals, rowColLegalsList, regionsDict):
+#     if rowColLegalsList == []:
+#         return board
+#     else:
+#         legalSetLength, legalsSet, row, col = rowColLegalsList[-1]
+#         for num in legalsSet:
+#             if len(legalsSet) == 1:
+#                 board[row][col] = num
+#                 rowColLegalsList.pop()
+#                 tuplesToRemoveFrom = []
+#                 for cellRegion in regionsDict[(row, col)]: 
+#                     for cell in cellRegion: 
+#                          for tupleSet in rowColLegalsList:
+#                              if (tupleSet[2], tupleSet[3]) == cell: 
+#                                 if num in tupleSet[1]: 
+#                                     tupleSet[1].remove(num) 
+#                                     tuplesToRemoveFrom.append(tupleSet)   
+#                 solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+#                 if solution != None:
+#                     return solution
+#                 board[row][col] = 0
+#                 rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+#                 for t in tuplesToRemoveFrom:
+#                     for tupleSet in rowColLegalsList:
+#                         if t == tupleSet:
+#                             tupleSet[1].add(num)
+#             else: 
+#                 if isLegalSudoku(board):
+#                     board[row][col]  = num
+#                     rowColLegalsList.pop()
+#                     tuplesToRemoveFrom = []
+#                     for cellRegion in regionsDict[(row, col)]: 
+#                         for cell in cellRegion: 
+#                             for tupleSet in rowColLegalsList: 
+#                                 if (tupleSet[2], tupleSet[3]) == cell: 
+#                                     if num in tupleSet[1]: 
+#                                         tupleSet[1].remove(num) 
+#                                         tuplesToRemoveFrom.append(tupleSet)   
+#                     solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+#                     if solution != None:
+#                         return solution
+#                     board[row][col] = 0
+#                     rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+#                     for t in tuplesToRemoveFrom:
+#                         for tupleSet in rowColLegalsList:
+#                             if t == tupleSet:
+#                                 tupleSet[1].add(num)
+#         return None
 
 # BOARD DRAWING FUNCTIONS
 
