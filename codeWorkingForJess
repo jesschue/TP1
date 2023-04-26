@@ -752,3 +752,216 @@ def getCellSize(app):
 def main():
     runApp(750, 750)
 main()
+
+
+
+
+
+class State:
+
+    def __init__(self, board, legals, notLegals, selection):
+        self.board = board
+        self.legals = legals
+        self.notLegals = notLegals
+        self.selection = selection
+        rows, cols = len(self.board), len(self.board[0])
+        for row in range(rows):
+            for col in range(cols):
+                if self.board[row][col] == 0:
+                    tempRow = self.getRowRegion(self.board, row)
+                    tempCol = self.getColRegion(self.board, col)
+                    tempBlock = self.getBlockRegion(self.board, row, col)
+                    for num in range(1, 10):
+                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                            self.legals[row][col].add(num)
+                        else:
+                            self.notLegals[row][col].add(num)
+        self.tempLegalsHint1Level1 = copy.deepcopy(self.legals)
+        self.tempLegalsHint1Level2 = copy.deepcopy(self.legals)
+        self.tempLegalsHint2Level1 = copy.deepcopy(self.legals)
+        self.allRegions = self.getAllRegions()
+
+    def ban(self, row, col, value):
+        # take out of self.legals and put into self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        
+        for location in currZeroesIndexes:
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
+            self.notLegals[location[0]][location[1]].add(value)
+
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def unban(self, row, col, value):
+        # put into self.legals and take out of self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempBlock, currZeroesIndexes)
+
+        for location in currZeroesIndexes:
+            self.legals[location[0]][location[1]].add(value)
+            if value in self.notLegals[location[0]][location[1]]: 
+                self.notLegals[location[0]][location[1]].remove(value)
+    
+    def currZeroesIndexesUnBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def getHint1Cell(self, legals):
+        hint1Cell = None
+        for row in range(len(legals)):
+            for col in range(len(legals[0])):
+                if len(legals[row][col]) == 1:
+                    hint1Cell = (row, col)
+                    return hint1Cell
+        return None
+
+    def getAllRegions(self):
+        allRegions = []
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                rowRegion = self.getRowRegion(self.legals, row)
+                if rowRegion[1] not in allRegions:
+                    allRegions.append(rowRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                colRegion = self.getColRegion(self.legals, col)
+                if colRegion[1] not in allRegions:
+                    allRegions.append(colRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                blockRegion = self.getBlockRegion(self.legals, row, col)
+                if blockRegion[1] not in allRegions:
+                    allRegions.append(blockRegion[1])
+        return allRegions
+
+    def getHint2Level1(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                if values != None and targets != None:
+                    self.getBansForAllRegions(values, targets, self.tempLegalsHint2Level1)
+                    return values, targets
+        return None, None
+
+    def getHint2Level2(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets = self.applyRule2(region, N)
+                if values != None and targets != None:
+                    self.getBansForAllRegions(values, targets, self.legals)
+                    print(values)
+                    print(targets)
+                    return values, targets
+        return None, None
+
+    def applyRule2(self, region, N):
+        L = [i for i in range(1, 10)]
+        for M in itertools.combinations(region, N):
+            legalsSet = set()
+            breakOut = False
+            for cell in M:
+                if self.legals[cell[0]][cell[1]] == set() or len(self.legals[cell[0]][cell[1]]) == 1:
+                    breakOut = True # cannot have hint w/ already given values --> break out of loop + create new combo of cells -- NOT WORKING?
+                else:
+                    legalsSet = legalsSet.union(self.legals[cell[0]][cell[1]])
+            # breaking into here, but i don't want it to go into this for loop
+            if not breakOut:
+                for B in itertools.combinations(L, len(M)):
+                    possibleValuesSet = set(B)
+                    if legalsSet == possibleValuesSet:
+                        return possibleValuesSet, M
+        return None, None
+
+    def getBansForAllRegions(self, values, targets, location):
+        # The values (to ban) can stay in the targets, but they must be
+        # banned from all other cells in all regions that contain all
+        # the targets
+        for region in self.getAllRegionsThatContainTargets(targets):
+            for cell in region:
+                if cell not in targets:
+                    for value in values:
+                        if value in location[cell[0]][cell[1]] and len(location[cell[0]][cell[1]]) > 1:
+                            location[cell[0]][cell[1]].remove(value)
+
+    def getAllRegionsThatContainTargets(self, targets):
+        regionList = []
+        for region in self.allRegions:
+            for target in targets:
+                if target in region:
+                    regionList.append(region)
+        return regionList
+
+    def getRowRegion(self, location, row):
+        rows, cols = len(location), len(location[0])
+        valuesList = location[row]
+        coordsList = []
+        for col in range(cols):
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getColRegion(self, location, col):
+        rows, cols = len(location), len(location[0])
+        valuesList = []
+        coordsList = []
+        for row in range(rows):
+            valuesList.append(location[row][col])
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlockRegion(self, location, row, col):
+        rows, cols = None, None
+        blockNum = self.getBlock(row, col)
+        valuesList = []
+        coordsList = []
+        if blockNum == 0 or blockNum == 1 or blockNum == 2:
+            rows = (0, 3)
+        elif blockNum == 3 or blockNum == 4 or blockNum == 5:
+            rows = (3, 6)
+        elif blockNum == 6 or blockNum == 7 or blockNum == 8:
+            rows = (6, 9)
+        if blockNum == 0 or blockNum == 3 or blockNum == 6:
+            cols = (0, 3)
+        elif blockNum == 1 or blockNum == 4 or blockNum == 7:
+            cols = (3, 6)
+        elif blockNum == 2 or blockNum == 5 or blockNum == 8:
+            cols = (6, 9)
+        for row in range(rows[0], rows[1]):
+            for col in range(cols[0], cols[1]):
+                valuesList.append(location[row][col])
+                coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlock(self, row, col): # block number
