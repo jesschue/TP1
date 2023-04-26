@@ -1,0 +1,1385 @@
+# Project Partners: Sonya Karnataki (skarnata) and Jessica Qiu (jkq)
+
+from cmu_graphics import *
+import math 
+import random
+import os
+import copy
+from PIL import Image, ImageDraw
+from PIL import Image
+import itertools 
+import pathlib 
+import time
+
+# CITATIONS FOR IMAGES ==> FUNCTION CITATIONS ARE RIGHT ABOVE EACH FUNCTION IN THIS CODE 
+# start button: https://pixelartmaker.com/art/54b5ab9b34da8a3
+# directions page background: https://www.motionelements.com/stock-video-9212534-super-mario-bros-platform-game-on-a-green-screen-background
+# starting screen background: https://www.pxfuel.com/en/desktop-wallpaper-gdwza
+# blue background with clouds: https://dribbble.com/shots/12294406-Super-Mario-Background
+# luigi profile: https://mariopartylegacy.com/characters/luigi/
+# koopa troopa profile: https://mariopartylegacy.com/characters/koopa-troopa/
+# rosalina profile: https://mariopartylegacy.com/characters/rosalina/ 
+# mario profile: https://mariopartylegacy.com/characters/mario/
+# toadette profile: https://mariopartylegacy.com/characters/toadette/
+# koopa troopa pop-up: https://play.nintendo.com/themes/friends/koopa-troopa/
+# luigi pop-up: https://www.mariowiki.com/Luigi
+# rosalina pop-up: https://en.wikipedia.org/wiki/Rosalina_%28Mario%29
+# mario pop-up: https://mario.nintendo.com/characters/
+# toadette pop-up: https://marioversewiki.com/wiki/Toadette
+# pixelated health bar heart: https://www.istockphoto.com/vector/pixel-heart-gm536892143-57588174
+# "you win" game over image: https://jacques-le-monde.tumblr.com/post/15665964675
+
+class State:
+
+    def __init__(self, board, legals, notLegals, selection):
+        self.board = board
+        self.legals = legals
+        self.notLegals = notLegals
+        self.selection = selection
+        rows, cols = len(self.board), len(self.board[0])
+        for row in range(rows):
+            for col in range(cols):
+                if self.board[row][col] == 0:
+                    tempRow = self.getRowRegion(self.board, row)
+                    tempCol = self.getColRegion(self.board, col)
+                    tempBlock = self.getBlockRegion(self.board, row, col)
+                    for num in range(1, 10):
+                        if num not in tempRow[0] and num not in tempCol[0] and num not in tempBlock[0]:
+                            self.legals[row][col].add(num)
+                        else:
+                            self.notLegals[row][col].add(num)
+        self.tempLegalsHint1Level1 = copy.deepcopy(self.legals)
+        self.tempLegalsHint1Level2 = copy.deepcopy(self.legals)
+        self.tempLegalsHint2Level1 = copy.deepcopy(self.legals)
+        self.allRegions = self.getAllRegions()
+
+    def ban(self, row, col, value):
+        # take out of self.legals and put into self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesBan(currIndex, tempBlock, currZeroesIndexes)
+        
+        for location in currZeroesIndexes:
+            if value in self.legals[location[0]][location[1]]: 
+                self.legals[location[0]][location[1]].remove(value)
+            self.notLegals[location[0]][location[1]].add(value)
+
+    def currZeroesIndexesBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def unban(self, row, col, value):
+        # put into self.legals and take out of self.notLegals
+        currZeroesIndexes = set()
+        currIndex = None
+
+        tempRow = self.getRowRegion(self.board, row)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempRow, currZeroesIndexes)
+
+        tempCol = self.getColRegion(self.board, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempCol, currZeroesIndexes)
+
+        tempBlock = self.getBlockRegion(self.board, row, col)
+        currZeroesIndexes, currIndex = self.currZeroesIndexesUnban(currIndex, tempBlock, currZeroesIndexes)
+
+        for location in currZeroesIndexes:
+            self.legals[location[0]][location[1]].add(value)
+            if value in self.notLegals[location[0]][location[1]]: 
+                self.notLegals[location[0]][location[1]].remove(value)
+    
+    def currZeroesIndexesUnBan(self, currIndex, location, currZeroesIndexes):
+        for index in range(len(location[1])):
+            if location[1][index] == self.selection:
+                currIndex = index
+        for index in range(len(location[0])):
+            if index != currIndex:
+                if location[0][index] == 0:
+                    currZeroesIndexes.add(location[1][index])
+        return currZeroesIndexes, currIndex
+
+    def getHint1Cell(self, legals):
+        hint1Cell = None
+        for row in range(len(legals)):
+            for col in range(len(legals[0])):
+                if len(legals[row][col]) == 1:
+                    hint1Cell = (row, col)
+                    return hint1Cell
+        return None
+
+    def getAllRegions(self):
+        allRegions = []
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                rowRegion = self.getRowRegion(self.legals, row)
+                if rowRegion[1] not in allRegions:
+                    allRegions.append(rowRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                colRegion = self.getColRegion(self.legals, col)
+                if colRegion[1] not in allRegions:
+                    allRegions.append(colRegion[1])
+        for row in range(len(self.legals)):
+            for col in range(len(self.legals[0])):
+                blockRegion = self.getBlockRegion(self.legals, row, col)
+                if blockRegion[1] not in allRegions:
+                    allRegions.append(blockRegion[1])
+        return allRegions
+
+    def getHint2Level1(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets, givenNumsCount = self.applyRule2(region, N)
+                if values != None and targets != None and len(targets) != (9 - givenNumsCount):
+                    # self.getBansForAllRegions(values, targets, self.tempLegalsHint2Level1)
+                    print(values, targets)
+                    return values, targets
+        return None, None
+
+    def getHint2Level2(self):
+        for region in self.allRegions:
+            for N in range(2, 6):
+                values, targets, givenNumsCount = self.applyRule2(region, N)
+                if values != None and targets != None and len(targets) != (9 - givenNumsCount):
+                    self.getBansForAllRegions(values, targets, self.legals)
+                    print(values, targets)
+                    return values, targets
+        return None, None
+
+    def applyRule2(self, region, N):
+        L = [i for i in range(1, 10)]
+        tuplesConvertLegals = []
+        for t in region:
+            tuplesConvertLegals.append(self.legals[t[0]][t[1]])
+        givenNumsCount = tuplesConvertLegals.count(set())
+        for M in itertools.combinations(region, N):
+            legalsSet = set()
+            breakOut = False
+            for cell in M:
+                if self.legals[cell[0]][cell[1]] == set() or len(self.legals[cell[0]][cell[1]]) == 1:
+                    breakOut = True # cannot have hint w/ already given values --> break out of loop + create new combo of cells
+                else:
+                    legalsSet = legalsSet.union(self.legals[cell[0]][cell[1]])
+            if not breakOut:
+                for B in itertools.combinations(L, len(M)):
+                    possibleValuesSet = set(B)
+                    if legalsSet == possibleValuesSet:
+                        return possibleValuesSet, M, givenNumsCount
+        return None, None, None
+
+    def getBansForAllRegions(self, values, targets, location):
+        # The values (to ban) can stay in the targets, but they must be
+        # banned from all other cells in all regions that contain all
+        # the targets
+        for region in self.getAllRegionsThatContainTargets(targets):
+            valueCounter = 0
+            for cell in region:
+                if cell in targets:
+                    valueCounter += 1
+            if valueCounter == len(targets):
+                for cell in region:
+                    if cell not in targets:
+                        for value in values:
+                            if value in location[cell[0]][cell[1]] and len(location[cell[0]][cell[1]]) > 1:
+                                location[cell[0]][cell[1]].remove(value)
+
+    def getAllRegionsThatContainTargets(self, targets):
+        regionList = []
+        for region in self.allRegions:
+            for target in targets:
+                if target in region:
+                    regionList.append(region)
+        return regionList
+
+    def getRowRegion(self, location, row):
+        rows, cols = len(location), len(location[0])
+        valuesList = location[row]
+        coordsList = []
+        for col in range(cols):
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getColRegion(self, location, col):
+        rows, cols = len(location), len(location[0])
+        valuesList = []
+        coordsList = []
+        for row in range(rows):
+            valuesList.append(location[row][col])
+            coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlockRegion(self, location, row, col):
+        rows, cols = None, None
+        blockNum = self.getBlock(row, col)
+        valuesList = []
+        coordsList = []
+        if blockNum == 0 or blockNum == 1 or blockNum == 2:
+            rows = (0, 3)
+        elif blockNum == 3 or blockNum == 4 or blockNum == 5:
+            rows = (3, 6)
+        elif blockNum == 6 or blockNum == 7 or blockNum == 8:
+            rows = (6, 9)
+        if blockNum == 0 or blockNum == 3 or blockNum == 6:
+            cols = (0, 3)
+        elif blockNum == 1 or blockNum == 4 or blockNum == 7:
+            cols = (3, 6)
+        elif blockNum == 2 or blockNum == 5 or blockNum == 8:
+            cols = (6, 9)
+        for row in range(rows[0], rows[1]):
+            for col in range(cols[0], cols[1]):
+                valuesList.append(location[row][col])
+                coordsList.append((row, col))
+        return [valuesList, coordsList]
+
+    def getBlock(self, row, col): # block number
+        if 0 <= row <= 2 and 0 <= col <= 2:
+            blockNum = 0
+        elif 0 <= row <= 2 and 3 <= col <= 5:
+            blockNum = 1
+        elif 0 <= row <= 2 and 6 <= col <= 8:
+            blockNum = 2
+        elif 3 <= row <= 5 and 0 <= col <= 2:
+            blockNum = 3
+        elif 3 <= row <= 5 and 3 <= col <= 5:
+            blockNum = 4
+        elif 3 <= row <= 5 and 6 <= col <= 8:
+            blockNum = 5
+        elif 6 <= row <= 8 and 0 <= col <= 2:
+            blockNum = 6
+        elif 6 <= row <= 8 and 3 <= col <= 5:
+            blockNum = 7
+        elif 6 <= row <= 8 and 6 <= col <= 8:
+            blockNum = 8
+        return blockNum
+
+def onAppStart(app):
+    # DRAWING THE BOARD
+    app.rows = 9
+    app.cols = 9
+    app.boardLeft = 50
+    app.boardTop = 70
+    app.boardWidth = app.width - 100
+    app.boardHeight = app.height - 125
+    app.cellBorderWidth = 2
+
+    # FOR THE MARIO IMAGES
+    # characters
+    app.mario = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\header-mario.png'''
+    app.marioProfile = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\marioprofile.png'''
+    app.toadette = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\mario-bros-toadette-super-mario-wiki-the-mario-encyclopedia-31 (1).png'''
+    app.toadetteProfile = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\toadetteprofile.png'''
+    app.koopaTroopa = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\latest (1).png'''
+    app.koopaTroopaProfile = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\koopatroopaprofile.png'''
+    app.luigi = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\MPSS_Luigi (6).png'''
+    app.luigiProfile = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\luigiprofile.png'''
+    app.rosalina = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\Rosalina_Super_Mario_Party.png'''
+    app.rosalinaProfile = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\rosalinaprofile.png'''
+    # app.marioGIF = loadAnimatedGif(app, '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\d6ly3qe-323cd400-96b7-4251-b98f-cde4526d4756.gif''')
+    # app.bowserGIF = loadAnimatedGif(app, '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\dc9qpkc-1ea9ade7-d144-4f5c-83fe-b25a4e8bb210.gif''')
+    # app.gameOverGIF = loadAnimatedGif(app, '''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\200px-Mario_Defeated_-_Super_Mario_Sticker.gif''')
+
+    # LOGOS, TITLES, AND IMAGES 
+    app.startingTitle = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\image (6).png'''
+    app.marioLogoPart1 = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\de1c665041c2788946fe94eb60b853d5.png'''
+    app.marioLogoPart2 = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\fb8b657a9a940a9575f81ba8b208e017.png'''
+    app.chooseDifficultyLevelPartOne = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\e400ad824bb727f461da80341dd0541e.png'''
+    app.chooseDifficultyLevelPartTwo = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\b919a24c04208dc5b067d9d5f4d3e55c.png'''
+    app.startButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\162cd9b350a6582.png'''
+    app.characterHealthHeart = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\pixel-heart-2779422_1280.png'''
+    app.continueButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\da228849babe35c.png'''
+    
+    # BACKGROUNDS
+    app.playScreenBackground = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\desktop-wallpaper-mario-bros-backgrounds-group-mario-background-thumbnail.jpg'''
+    app.directionsBackground = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\image (1).png'''
+    app.difficultyBackground = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\image.png'''
+    app.wonGameBackground = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\tumblr_lxmpzcNHLq1r6iwg2o1_500.png'''
+    
+    # IN-GAME SHOP
+    app.mushroomItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\Mk8item1.png'''
+    app.toadShopImage = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\mario-party-superstars-toad-shop-25848 (1).png'''
+    app.blankGreenSign = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\6a081419ce85c20.png'''
+    app.starItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\3380799-star.png'''
+    app.backToGameButton = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\bc30079f0301e28.png'''
+    app.mysteryBoxItem = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\200px-Question_Block_SM3DL.png'''
+    app.shelves = '''C:\\Users\\jessi\\OneDrive\\Desktop\\15-112\\sudoku\\SudokuAllImages\\image_processing20210530-7831-1t3i35v.png'''
+    
+    # MUSIC
+    # app.starterSound = loadSound('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\Super Mario Party OST - Main Theme.mp3''')
+    # app.sudokuPlaySound = loadSound('''C:\\Users\\sovia\\OneDrive\\Semester 2\\HW\\15-112 Lecture 3\\Sudoku\\Upbeat Mario Music to cure your depression.mp3''')
+    # app.starterSound.play()
+
+    # FOR KEEPING TRACK OF WHICH SCREEN & OTHER GAME COMPONENTS
+
+    # # starting screens
+    app.playScreen = True
+    app.directionsPartOne = False 
+    app.directionsPartTwo = False 
+    app.characterSelectScreen = False 
+    app.chooseDifficultyScreen = False
+    app.showMarioGIF = False
+
+    # # in-game
+    app.sudokuPage = False
+    app.gameHasStarted = False
+    app.characterPopUp = False
+    app.enterValue = False
+    app.openShop = False
+    app.directionsWhenGameStartedPartOne = False
+    app.directionsWhenGameStartedPartTwo = False
+    app.showLegals = False 
+    app.toggleNormal = True 
+    app.toggleLegals = False 
+    app.hint1Level1 = False 
+    app.hint1Level2 = False 
+    app.hint2Level1 = False 
+    app.hint2Level2 = False
+    app.gameIsOver = False
+
+    # other values
+    app.numberOfIncorrect = 0
+    app.selection = None
+    app.currentGuess = None
+    app.chosenCharacter = None 
+    app.chosenLevel = None
+    app.chosenBoard = None
+    app.chosenCharacter = None  
+    app.numberOfCoins = 10000
+    app.characterScreenMessage = None
+    app.shopMessage = None
+    app.numberOfToggles = 0
+    app.previousLegalsKey = None
+    app.wrongCell = None
+    app.userInputtedValues = set()
+    app.hint1Cell = None
+    app.hint2Cells = None
+    app.numberOfUndos = 0
+    app.numberOfHints = 0
+    app.statesList = []
+    app.currentState = None
+    app.numberOfMoves = 0
+
+    # DRAWING GIFS
+    app.spriteCounter = 0
+    app.stepsPerSecond = 10
+    app.spriteX = -25 
+    app.spriteY = 625
+
+    # app.hint2Level1 = False
+    # app.hint2Level2 = False
+    # app.currentState = State([[[9, 0, 0, 0, 3, 8, 0, 7, 0], [0, 0, 0, 6, 0, 0, 0, 0, 8], [0, 3, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 8, 0, 0, 0, 0, 0], [0, 0, 2, 0, 0, 0, 0, 9, 0], [0, 6, 0, 0, 5, 4, 0, 0, 7], [0, 0, 0, 0, 1, 0, 0, 0, 0], [6, 0, 0, 0, 0, 0, 5, 0, 0], [0, 5, 0, 0, 7, 3, 0, 0, 4]]], [[set(), {1, 2, 4}, {1, 4, 5, 6}, {2, 4, 5}, set(), set(), {1, 2, 4, 6}, set(), {1, 2, 5, 6}], [{1, 2, 4, 5, 7}, {1, 2, 4, 7}, {1, 4, 5, 7}, set(), {9, 2, 4}, {9, 2, 5, 7}, {1, 2, 3, 4, 9}, {1, 2, 3, 4, 5}, set()], [{2, 4, 5, 7, 8}, set(), {4, 5, 6, 7, 8}, set(), {9, 2, 4}, {9, 2, 5, 7}, {9, 2, 4, 6}, {2, 4, 5, 6}, {9, 2, 5, 6}], [{1, 3, 4, 5, 7}, {1, 4, 9, 7}, {1, 3, 4, 5, 7, 9}, set(), {9, 2, 6}, {1, 2, 6, 7, 9}, {1, 2, 3, 4, 6}, {1, 2, 3, 4, 5, 6}, {1, 2, 3, 5, 6}], [{1, 3, 4, 5, 7, 8}, {8, 1, 4, 7}, set(), {3, 7}, {6}, {1, 6, 7}, {1, 3, 4, 6, 8}, set(), {1, 3, 5, 6}], [{8, 1, 3}, set(), {8, 1, 3, 9}, {9, 2, 3}, set(), set(), {8, 1, 2, 3}, {8, 1, 2, 3}, set()], [{2, 3, 4, 7, 8}, {2, 4, 7, 8, 9}, {3, 4, 7, 8, 9}, {9, 2, 4, 5}, set(), {9, 2, 5, 6}, {2, 3, 6, 7, 8, 9}, {8, 2, 3, 6}, {9, 2, 3, 6}], [set(), {1, 2, 4, 7, 8, 9}, {1, 3, 4, 7, 8, 9}, {9, 2, 4}, {8, 9, 2, 4}, {9, 2}, set(), {8, 1, 2, 3}, {1, 2, 3, 9}], [{8, 1, 2}, set(), {8, 1, 9}, {9, 2}, set(), set(), {1, 2, 6, 8, 9}, {8, 1, 2, 6}, set()]], [[set(), {3, 5, 6, 7, 8, 9}, {2, 3, 7, 8, 9}, {1, 3, 6, 7, 8, 9}, set(), set(), {3, 5, 7, 8, 9}, set(), {3, 4, 7, 8, 9}], [{8, 9, 3, 6}, {3, 5, 6, 8, 9}, {2, 3, 6, 8, 9}, set(), {1, 3, 5, 6, 7, 8}, {1, 3, 4, 6, 8}, {8, 5, 6, 7}, {8, 9, 6, 7}, set()], [{1, 3, 6, 9}, set(), {1, 2, 3, 9}, set(), {1, 3, 5, 6, 7, 8}, {1, 3, 4, 6, 8}, {1, 3, 5, 7, 8}, {1, 3, 7, 8, 9}, {1, 3, 4, 7, 8}], [{8, 9, 2, 6}, {2, 3, 5, 6, 8}, {8, 2, 6}, set(), {1, 3, 4, 5, 7, 8}, {8, 3, 4, 5}, {8, 9, 5, 7}, {8, 9, 7}, {8, 9, 4, 7}], [{9, 2, 6}, {2, 3, 5, 6, 9}, set(), {1, 2, 4, 5, 6, 8, 9}, {1, 2, 3, 4, 5, 7, 8, 9}, {2, 3, 4, 5, 8, 9}, {9, 2, 5, 7}, set(), {2, 4, 7, 8, 9}], [{2, 4, 5, 6, 7, 9}, set(), {2, 4, 5, 6, 7}, {1, 4, 5, 6, 7, 8}, set(), set(), {4, 5, 6, 7, 9}, {4, 5, 6, 7, 9}, set()], [{1, 5, 6, 9}, {1, 3, 5, 6}, {1, 2, 5, 6}, {1, 3, 6, 7, 8}, set(), {1, 3, 4, 7, 8}, {1, 4, 5}, {1, 4, 5, 7, 9}, {1, 4, 5, 7, 8}], [set(), {3, 5, 6}, {2, 5, 6}, {1, 3, 5, 6, 7, 8}, {1, 3, 5, 6, 7}, {1, 3, 4, 5, 6, 7, 8}, set(), {4, 5, 6, 7, 9}, {4, 5, 6, 7, 8}], [{3, 4, 5, 6, 7, 9}, set(), {2, 3, 4, 5, 6, 7}, {1, 3, 4, 5, 6, 7, 8}, set(), set(), {3, 4, 5, 7}, {3, 4, 5, 7, 9}, set()]], None)
+
+# BOARD LOADING FUNCTIONS
+
+# readFile function used directly from Sudoku Hints page 
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
+def readFile(path):
+    with open(path, "rt") as f:
+        return f.read()
+
+# loadBoardPaths function modified from Sudoku Hints page
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
+# def loadBoardPaths(filters):
+#     boardPaths = [ ]
+#     boardStarterFiles = '''tp-starter-files\\boards'''
+#     print(boardStarterFiles)
+#     for filename in os.listdir(f'{boardStarterFiles}'):
+#         if filename.endswith('.txt'):
+#             if hasFilters(filename, filters):
+#                 boardPaths.append(f'{boardStarterFiles}\\{filename}')
+#     return boardPaths
+
+# hasFilters function used directly from Sudoku Hints page
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/tp-sudoku-hints.html
+def hasFilters(filename, filters=None):
+    if filters == None: return True
+    for filter in filters:
+        if filter not in filename:
+            return False
+    return True
+
+def getChosenBoard(app): ###
+    # filters = [app.chosenLevel]
+    # app.boardPathsAtChosenDifficulty = loadBoardPaths(filters)
+    # index = random.randrange(0, len(app.boardPathsAtChosenDifficulty))
+    # chosenBoardPathTitle = app.boardPathsAtChosenDifficulty[index] 
+    # chosenBoardPathAsString = readFile(chosenBoardPathTitle)
+    # app.chosenBoard = makeInto2dList(chosenBoardPathAsString)
+    # app.chosenBoard = [[9, 0, 0, 0, 3, 8, 0, 7, 0], [0, 0, 0, 6, 0, 0, 0, 0, 8], [0, 3, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 8, 0, 0, 0, 0, 0], [0, 0, 2, 0, 0, 0, 0, 9, 0], [0, 6, 0, 0, 5, 4, 0, 0, 7], [0, 0, 0, 0, 1, 0, 0, 0, 0], [6, 0, 0, 0, 0, 0, 5, 0, 0], [0, 5, 0, 0, 7, 3, 0, 0, 4]]
+    board = makeInto2dList('''3 0 8 9 0 0 0 1 0
+0 2 9 0 0 5 7 0 0
+0 6 1 0 0 0 0 2 0
+0 3 0 4 0 0 1 5 7
+0 4 5 0 1 0 0 0 0
+0 0 6 0 0 3 2 0 0
+0 0 0 5 0 0 0 0 0
+2 0 0 0 0 0 0 3 0
+6 0 0 0 0 7 0 0 9''')
+    rows, cols = len(board), len(board[0])
+    legals = [[] * cols for _ in range(rows)]
+    for row in range(rows):
+        for num in range(9):
+            legals[row].append(set())
+    notLegals = copy.deepcopy(legals)
+    app.currentState = State(board, legals, notLegals, None)
+    app.statesList.append(app.currentState)
+    app.currentState = copy.deepcopy(app.currentState)
+    # return app.chosenBoard
+
+def makeInto2dList(givenBoard): 
+    board = [] 
+    for row in givenBoard.splitlines(): 
+        temp = [] 
+        for element in row.split(' '): 
+            temp.append(int(element))
+        board.append(temp)
+    return board
+
+# GIF
+
+# def loadAnimatedGif(app, path):
+#     pilImages = Image.open(path)
+#     if pilImages.format != 'GIF':
+#         raise Exception(f'{path} is not an animated image!')
+#     if not pilImages.is_animated:
+#         raise Exception(f'{path} is not an animated image!')
+#     cmuImages = [ ]
+#     for frame in range(pilImages.n_frames):
+#         pilImages.seek(frame)
+#         pilImage = pilImages.copy()
+#         cmuImages.append(CMUImage(pilImage))
+#     return cmuImages
+
+# def onStep(app):
+#     app.spriteCounter = (1 + app.spriteCounter) % len(app.marioGIF)
+#     app.spriteX += 30
+#     if app.spriteX >= 1500:
+#         app.spriteX = -25
+
+# SAVING BOARD AS PDF
+
+def makePilImageForCurrBoard(app, rows, cols, imageSize):
+    pillImage = Image.new('RGBA', imageSize)
+    draw = ImageDraw.Draw(pillImage)
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    for row in range(app.rows): 
+        for col in range(app.cols): 
+            cellLeft = app.boardLeft + col * cellWidth
+            cellTop = app.boardTop + row * cellHeight
+            if app.currentState.board[row][col] == 0: 
+                draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (255, 255, 255, 127))
+            else: 
+                draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (80, 80, 80, 127))
+            draw.text((cellLeft + cellWidth//2 - 50, cellTop + cellHeight//2 - 70), str(app.currentState.board[row][col]))
+    return pillImage
+
+def makePilImageForSolution(app, rows, cols, imageSize):
+    pillImage = Image.new('RGBA', imageSize)
+    draw = ImageDraw.Draw(pillImage)
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    for row in range(app.rows): 
+        for col in range(app.cols): 
+            cellLeft = app.boardLeft + col * cellWidth
+            cellTop = app.boardTop + row * cellHeight  
+            draw.rectangle((cellLeft - 50, cellTop - 70, cellHeight + cellLeft, cellWidth + cellTop), fill = (80, 80, 80, 127))
+            draw.text((cellLeft + cellWidth//2 - 50, cellTop + cellHeight//2 - 70), str(app.solution[row][col]))
+    return pillImage
+
+# saveImagesAsPdf function used directly from Term Project Overview page 
+# https://www.cs.cmu.edu/afs/cs.cmu.edu/academic/class/15112-3-s23/www/notes/term-project.html
+def saveImagesAsPdf(app):
+    cmuImages = [app.currentBoardImage, app.solutionImage]
+    pilImages = [cmuImage.image for cmuImage in cmuImages]
+    pilImages[0].save('savedImages.pdf', save_all=True, append_images=pilImages[1:])
+
+# LOADING SOUND
+
+def loadSound(relativePath):
+    absolutePath = os.path.abspath(relativePath)
+    url = pathlib.Path(absolutePath).as_uri()
+    return Sound(url)
+
+# lightPurple cell selection: https://htmlcolorcodes.com/colors/light-violet/
+# red background (mario): https://convertingcolors.com/rgb-color-255_204_203.html
+def redrawAll(app):
+    if app.gameHasStarted:
+        if app.sudokuPage:
+            # background color for character select
+            drawRect(100, 15, 175, 40, fill = 'green')
+            drawLabel('OPEN ITEM SHOP', 187, 35, fill = 'white', align = 'center', size = 16)
+            drawRect(300, 15, 175, 40, fill = 'green')
+            drawLabel('OPEN DIRECTIONS', 387, 35, fill = 'white', align = 'center', size = 16)
+            if 0 <= app.numberOfIncorrect < 5:
+                drawRect(app.width - 200, 20, 35 * (5 - app.numberOfIncorrect), 20, fill = 'red')
+            drawRect(app.width - 200, 20, 175, 20, fill = None, border = 'black')
+            for num in range(1, 6):
+                drawLine((app.width - 200) + 35 * num, 20, 550 + 35 * num, 40)
+            drawCircle(35, 30, 13, fill = 'yellow', border = 'black')
+            drawLabel(app.numberOfCoins, 70, 30, size = 20)
+            drawRect(50, 705, 175, 30, fill = 'green')
+            drawLabel('TOGGLE LEGALS', 137, 720, fill = 'white', size = 16, align = 'center')
+            drawRect(250, 705, 175, 30, fill = 'green')
+            drawLabel('SOLVE BOARD', 337, 720, fill = 'white', size = 16, align = 'center')
+            drawRect(450, 705, 250, 30, fill = 'green')
+            if app.numberOfToggles == 0:
+                drawLabel('TOGGLE NORMAL/CANDIDATE', 575, 720, fill = 'white', size = 16, align = 'center')
+            elif app.numberOfToggles % 2 == 1:
+                drawLabel('ENTERING CANDIDATES', 575, 720, fill = 'white', size = 16, align = 'center', bold = True)
+            elif app.numberOfToggles % 2 == 0:
+                drawLabel('ENTERING NORMAL VALUES', 575, 720, fill = 'white', size = 16, align = 'center', bold = True)
+            imageWidth, imageHeight = getImageSize(app.characterHealthHeart)
+            drawImage(app.characterHealthHeart, 550, 30, width=imageWidth//35, height=imageHeight//35, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.starItem)
+            drawImage(app.starItem, 725, 100, width=imageWidth//13, height=imageHeight//13, align = 'center')
+            drawLabel(app.numberOfHints, 725, 125, size = 16)
+            imageWidth, imageHeight = getImageSize(app.mushroomItem)
+            drawImage(app.mushroomItem, 725, 200, width=imageWidth//13, height=imageHeight//13, align = 'center')
+            drawLabel(app.numberOfUndos, 725, 225, size = 16)
+            drawBoard(app)
+            for i in range(1, 3):
+                drawLine(app.boardLeft + 72 * 3 * i, app.boardTop, app.boardLeft + 72 * 3 * i, app.boardTop + 72 * 8.65, fill = 'black', lineWidth = 6.8)
+                drawLine(app.boardLeft, app.boardTop + 72 * 2.9 * i, app.boardLeft + 72 * 9, app.boardTop + 72 * 2.9 * i, fill = 'black', lineWidth = 6.8)
+            drawBoardBorder(app)
+        elif app.openShop: 
+            imageWidth, imageHeight = getImageSize(app.toadShopImage)
+            drawImage(app.toadShopImage, 0, 0, width = imageWidth//1.7, height = imageHeight//1.7)
+            imageWidth, imageHeight = getImageSize(app.shelves)
+            drawImage(app.shelves, 490, 450, width = imageWidth//3, height = imageHeight//3, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.shelves)
+            drawImage(app.shelves, 490, 600, width = imageWidth//3, height = imageHeight//3, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.shelves)
+            drawImage(app.shelves, 490, 750, width = imageWidth//3, height = imageHeight//3, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.starItem)
+            drawImage(app.starItem, 350, 600, width = imageWidth//3, height = imageHeight//3)
+            imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+            drawImage(app.blankGreenSign, 600, 670, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+            drawLabel('BUY HINT: 250 COINS', 600, 670, fill = 'black', size = 18, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.mysteryBoxItem)
+            drawImage(app.mysteryBoxItem, 400, 505, width = imageWidth//2, height = imageHeight//2, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+            drawImage(app.blankGreenSign, 600, 515, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+            drawLabel('BUY HEALTH: 500 COINS', 600, 515, fill = 'black', size = 16, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.mushroomItem)
+            drawImage(app.mushroomItem, 400, 350, width = imageWidth//3.5, height = imageHeight//3.5, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.blankGreenSign)
+            drawImage(app.blankGreenSign, 600, 370, width = imageWidth//1.5, height = imageHeight//2.5, align = 'center')
+            drawLabel('BUY UNDO & REDO: 300 COINS', 600, 370, fill = 'black', size = 13, align = 'center')
+            imageWidth, imageHeight = getImageSize(app.backToGameButton)
+            drawImage(app.backToGameButton, 125, 680, width = imageWidth//2.5, height = imageHeight//2.5, align = 'center')
+            drawRect(10, 340, 225, 100, fill = 'blue')
+            drawLabel('YOUR WALLET:', 122, 360, fill = 'white', size = 20)
+            drawCircle(90, 400, 20, fill = 'yellow', border = 'black')
+            drawLabel(app.numberOfCoins, 140, 400, fill = 'white', size = 20)
+            if app.shopMessage != None: 
+                drawRect(100, 200, 550, 100, fill = 'red', border = 'black')
+                drawLabel(app.shopMessage, 375, 250, fill = 'black', size = 30)
+        elif app.directionsWhenGameStartedPartOne:
+            imageWidth, imageHeight = getImageSize(app.directionsBackground)
+            drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+            height=imageHeight//0.6)
+
+            drawLabel('DIRECTIONS', 375, 30, fill = 'white', size = 20, bold = True)
+            drawLabel('Welcome to Sudoku! Wait…not JUST Sudoku…MARIO SUDOKU!', 375, 75, size = 20, fill = 'white', align = 'center')
+            drawLabel('Play one of the most popular logic games (minus the math)', 375, 95, size = 20, fill = 'white', align = 'center')
+            drawLabel('set in the world of Mario.', 375, 115, size = 20, fill = 'white', align = 'center')
+            drawLabel('In case you forgot, here are the basic rules of Sudoku:', 330, 155, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('1. Each board is 9 x 9 cells, with a few of the cells already filled in', 100, 185, size = 20, fill = 'white', align = 'left')
+            drawLabel('(how many pre-filled cells depends on the difficulty you choose).', 100, 205, size = 20, fill = 'white', align = 'left')
+            drawLabel('2. Each line, vertically and horizontally, must be filled in with numbers', 100, 235, size = 20, fill = 'white', align = 'left')
+            drawLabel('from 1-9, and you cannot repeat numbers in the same line!', 100, 255, size = 20, fill = 'white', align = 'left')
+            drawLabel('3. There are also nine 3 x 3 blocks marked on the board. Each block', 100, 285, size = 20, fill = 'white', align = 'left')
+            drawLabel('cannot contain repeats either.', 100, 305, size = 20, fill = 'white', align = 'left')
+            drawLabel('Press n to continue to the next page of directions!', 100, 355, size = 20, fill = 'white', align = 'left', bold = True)
+        elif app.directionsWhenGameStartedPartTwo: 
+            imageWidth, imageHeight = getImageSize(app.directionsBackground)
+            drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+            height=imageHeight//0.6)
+
+            drawLabel('To spice things up, us evil game makers (who want you to suffer,', 375, 30, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('but also have fun!) have added some additional rules:', 375, 50, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+            drawLabel('1. To start, choose a difficulty: easy, medium, hard, expert, and evil. Based', 40, 90, size = 20, fill = 'white', align = 'left')
+            drawLabel('on the difficulty, you’ll be given a starter board with more or less cells', 40, 110, size = 20, fill = 'white', align = 'left')
+            drawLabel('already filled in for you.', 40, 130, size = 20, fill = 'white', align = 'left')
+            drawLabel('2. Choose a character to play as: Mario, Luigi, Rosalina, Toadette, or', 40, 160, size = 20, fill = 'white', align = 'left')
+            drawLabel('Koopa Troopa. It’s your job to keep their health bar up: every time', 40, 180, size = 20, fill = 'white', align = 'left')
+            drawLabel('you enter an incorrect value in a cell, a goomba will cause their health', 40, 200, size = 20, fill = 'white', align = 'left')
+            drawLabel('bar to decrease. Once the health bar hits 0, GAME OVER!', 40, 220, size = 20, fill = 'white', align = 'left')
+            drawLabel('3. As you enter values correctly in cells, you will earn coins. Pop open', 40, 250, size = 20, fill = 'white', align = 'left')
+            drawLabel('the shop during the game to use your coins to buy hints, extra undos,', 40, 270, size = 20, fill = 'white', align = 'left')
+            drawLabel('and more health! If you enter values incorrectly, however, the cells will', 40, 290, size = 20, fill = 'white', align = 'left')
+            drawLabel('turn red and you can use one of your undos to try again. If you run out', 40, 310, size = 20, fill = 'white', align = 'left')
+            drawLabel('of undos, GAME OVER!', 40, 330, size = 20, fill = 'white', align = 'left')
+            drawLabel('4. You will be fighting a final boss as you play through an evil', 40, 360, size = 20, fill = 'white', align = 'left')
+            drawLabel('board, and if you can successfully finish it, you can call yourself', 40, 380, size = 20, fill = 'white', align = 'left')
+            drawLabel('a Sudoku master!', 40, 400, size = 20, fill = 'white', align = 'left')
+            drawLabel('5. At any point of the game, you can save your board and the solution in a pdf!', 40, 430, size = 20, fill = 'white', align = 'left')
+            drawLabel('You can do this by pressing p.', 40, 450, size = 20, fill = 'white', align = 'left')
+            drawLabel('That’s all for now. Good luck!', 375, 480, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+
+            imageWidth, imageHeight = getImageSize(app.backToGameButton)
+            drawImage(app.backToGameButton, 125, 680, width = imageWidth//2.5, height = imageHeight//2.5, align = 'center')
+
+    if app.playScreen:
+        imageWidth, imageHeight = getImageSize(app.playScreenBackground)
+        drawImage(app.playScreenBackground, 0, 0, width=imageWidth//0.4,
+        height=imageHeight//0.35)
+        imageWidth, imageHeight = getImageSize(app.marioLogoPart1)
+        drawImage(app.marioLogoPart1, 375, 35, width = imageWidth, 
+                  height = imageHeight, align = 'center')
+        imageWidth, imageHeight = getImageSize(app.marioLogoPart2)
+        drawImage(app.marioLogoPart2, 375, 100, width = imageWidth//1.5, 
+                  height = imageHeight//1.5, align = 'center')
+        imageWidth, imageHeight = getImageSize(app.startButton)
+        drawImage(app.startButton, 375, 400, width=imageWidth//1.25,
+        height=imageHeight//1.25, align = 'center')
+
+    if app.directionsPartOne:
+        imageWidth, imageHeight = getImageSize(app.directionsBackground)
+        drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+        height=imageHeight//0.6)
+
+        drawLabel('DIRECTIONS', 375, 30, fill = 'white', size = 20, bold = True)
+        drawLabel('Welcome to Sudoku! Wait…not JUST Sudoku…MARIO SUDOKU!', 375, 75, size = 20, fill = 'white', align = 'center')
+        drawLabel('Play one of the most popular logic games (minus the math)', 375, 95, size = 20, fill = 'white', align = 'center')
+        drawLabel('set in the world of Mario.', 375, 115, size = 20, fill = 'white', align = 'center')
+        drawLabel('In case you forgot, here are the basic rules of Sudoku:', 330, 155, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('1. Each board is 9 x 9 cells, with a few of the cells already filled in', 100, 185, size = 20, fill = 'white', align = 'left')
+        drawLabel('(how many pre-filled cells depends on the difficulty you choose).', 100, 205, size = 20, fill = 'white', align = 'left')
+        drawLabel('2. Each line, vertically and horizontally, must be filled in with numbers', 100, 235, size = 20, fill = 'white', align = 'left')
+        drawLabel('from 1-9, and you cannot repeat numbers in the same line!', 100, 255, size = 20, fill = 'white', align = 'left')
+        drawLabel('3. There are also nine 3 x 3 blocks marked on the board. Each block', 100, 285, size = 20, fill = 'white', align = 'left')
+        drawLabel('cannot contain repeats either.', 100, 305, size = 20, fill = 'white', align = 'left')
+        drawLabel('Press n to continue to the next page of directions!', 100, 355, size = 20, fill = 'white', align = 'left', bold = True)
+    
+    if app.directionsPartTwo: 
+        imageWidth, imageHeight = getImageSize(app.directionsBackground)
+        drawImage(app.directionsBackground, 0, 0, width=imageWidth//0.75,
+        height=imageHeight//0.6)
+
+        drawLabel('To spice things up, us evil game makers (who want you to suffer,', 375, 30, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('but also have fun!) have added some additional rules:', 375, 50, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('1. To start, choose a difficulty: easy, medium, hard, expert, and evil. Based', 40, 90, size = 20, fill = 'white', align = 'left')
+        drawLabel('on the difficulty, you’ll be given a starter board with more or less cells', 40, 110, size = 20, fill = 'white', align = 'left')
+        drawLabel('already filled in for you.', 40, 130, size = 20, fill = 'white', align = 'left')
+        drawLabel('2. Choose a character to play as: Mario, Luigi, Rosalina, Toadette, or', 40, 160, size = 20, fill = 'white', align = 'left')
+        drawLabel('Koopa Troopa. It’s your job to keep their health bar up: every time', 40, 180, size = 20, fill = 'white', align = 'left')
+        drawLabel('you enter an incorrect value in a cell, a goomba will cause their health', 40, 200, size = 20, fill = 'white', align = 'left')
+        drawLabel('bar to decrease. Once the health bar hits 0, GAME OVER!', 40, 220, size = 20, fill = 'white', align = 'left')
+        drawLabel('3. As you enter values correctly in cells, you will earn coins. Pop open', 40, 250, size = 20, fill = 'white', align = 'left')
+        drawLabel('the shop during the game to use your coins to buy hints, extra undos,', 40, 270, size = 20, fill = 'white', align = 'left')
+        drawLabel('and more health! If you enter values incorrectly, however, the cells will', 40, 290, size = 20, fill = 'white', align = 'left')
+        drawLabel('turn red and you can use one of your undos to try again. If you run out', 40, 310, size = 20, fill = 'white', align = 'left')
+        drawLabel('of undos, GAME OVER!', 40, 330, size = 20, fill = 'white', align = 'left')
+        drawLabel('4. You will be fighting a final boss as you play through an evil', 40, 360, size = 20, fill = 'white', align = 'left')
+        drawLabel('board, and if you can successfully finish it, you can call yourself', 40, 380, size = 20, fill = 'white', align = 'left')
+        drawLabel('a Sudoku master!', 40, 400, size = 20, fill = 'white', align = 'left')
+        drawLabel('5. At any point of the game, you can save your board and the solution in a pdf!', 40, 430, size = 20, fill = 'white', align = 'left')
+        drawLabel('You can do this by pressing p.', 40, 450, size = 20, fill = 'white', align = 'left')
+        drawLabel('That’s all for now. Good luck!', 375, 480, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+        drawLabel('Press c to continue to choosing your character!', 375, 520, size = 20, fill = 'white', align = 'center', bold = True, italic = True)
+
+    if app.characterSelectScreen:
+        drawRect(0, 0, 750, 750)
+        startingTitleWidth, startingTitleHeight = getImageSize(app.startingTitle)
+        drawImage(app.startingTitle, 0, 0, width=startingTitleWidth//1.65,
+        height=startingTitleHeight//1.65)
+        imageWidth, imageHeight = getImageSize(app.rosalinaProfile)
+        drawImage(app.rosalinaProfile, 160, 425, width=imageWidth//3,
+        height=imageHeight//3)
+        imageWidth, imageHeight = getImageSize(app.toadetteProfile)
+        drawImage(app.toadetteProfile, 435, 425, width=imageWidth//3,
+        height=imageHeight//3)
+        imageWidth, imageHeight = getImageSize(app.marioProfile)
+        drawImage(app.marioProfile, 25, 580, width=imageWidth//3,
+        height=imageHeight//3)
+        imageWidth, imageHeight = getImageSize(app.koopaTroopaProfile)
+        drawImage(app.koopaTroopaProfile, 300, 580, width=imageWidth//3,
+        height=imageHeight//3)
+        imageWidth, imageHeight = getImageSize(app.luigiProfile)
+        drawImage(app.luigiProfile, 550, 580, width=imageWidth//3,
+        height=imageHeight//3) 
+        imageWidth, imageHeight = getImageSize(app.continueButton)
+        drawImage(app.continueButton, 375, 80, width=imageWidth//2.5,
+        height=imageHeight//2.5, align = 'center')
+
+        if app.characterScreenMessage != None: 
+            drawLabel(app.characterScreenMessage, 375, 250, size = 20, bold = True, fill = 'white')
+        if app.chosenCharacter == app.rosalina: 
+            imageWidth, imageHeight = getImageSize(app.rosalina)
+            drawImage(app.rosalina, 375, 280, width=imageWidth//1.2,
+            height=imageHeight//1.2, align='center')
+        if app.chosenCharacter == app.toadette: 
+            imageWidth, imageHeight = getImageSize(app.toadette)
+            drawImage(app.toadette, 375, 280, width=imageWidth//5.5,
+            height=imageHeight//5.5, align='center')
+        if app.chosenCharacter == app.mario: 
+            imageWidth, imageHeight = getImageSize(app.mario)
+            drawImage(app.mario, 375, 280, width=imageWidth//3,
+            height=imageHeight//3, align='center')
+        if app.chosenCharacter == app.koopaTroopa: 
+            imageWidth, imageHeight = getImageSize(app.koopaTroopa)
+            drawImage(app.koopaTroopa, 375, 280, width=imageWidth//7.25,
+            height=imageHeight//7.25, align='center')
+        if app.chosenCharacter == app.luigi: 
+            imageWidth, imageHeight = getImageSize(app.luigi)
+            drawImage(app.luigi, 375, 280, width=imageWidth//3.25,
+            height=imageHeight//3.25, align='center')
+
+    if app.chooseDifficultyScreen: 
+        imageWidth, imageHeight = getImageSize(app.difficultyBackground)
+        drawImage(app.difficultyBackground, 0, 0, width=imageWidth,
+        height=imageHeight//0.85)
+        imageWidth, imageHeight = getImageSize(app.chooseDifficultyLevelPartOne)
+        drawImage(app.chooseDifficultyLevelPartOne, 375, 25, width=imageWidth//2,
+        height=imageHeight//2, align = 'center')
+        imageWidth, imageHeight = getImageSize(app.chooseDifficultyLevelPartTwo)
+        drawImage(app.chooseDifficultyLevelPartTwo, 375, 75, width=imageWidth//2,
+        height=imageHeight//2, align = 'center')
+        drawRect(125, 150, 225, 100, fill = 'black')
+        drawLabel('EASY', 240, 200, fill = 'white', size = 30, align = 'center')
+        drawRect(400, 150, 225, 100, fill = 'black')
+        drawLabel('MEDIUM', 515, 200, fill = 'white', size = 30, align = 'center')
+        drawRect(125, 300, 225, 100, fill = 'black')
+        drawLabel('HARD', 240, 350, fill = 'white', size = 30, align = 'center')
+        drawRect(400, 300, 225, 100, fill = 'black')
+        drawLabel('EXPERT', 515, 350, fill = 'white', size = 30, align = 'center')
+        drawRect(260, 450, 225, 100, fill = 'black')
+        drawLabel('EVIL >:D', 375, 500, fill = 'white', size = 30, align = 'center')
+
+    if app.characterPopUp:
+        if app.chosenCharacter == app.rosalina: 
+        # rosalina
+            drawRect(30, 280, 310, 100, fill='cyan', border='black')
+            imageWidth, imageHeight = getImageSize(app.rosalina)
+            drawImage(app.rosalina, 350, 320, width=imageWidth//2.5,
+            height=imageHeight//2.5, align='center')
+        elif app.chosenCharacter == app.luigi: 
+        # luigi 
+            drawRect(30, 280, 310, 100, fill='green', border='black')
+            imageWidth, imageHeight = getImageSize(app.luigi)
+            drawImage(app.luigi, 340, 320, width=imageWidth//6,
+            height=imageHeight//6, align='center')
+        
+        elif app.chosenCharacter == app.mario: 
+        # mario
+            drawRect(30, 280, 310, 100, fill='red', border='black')
+            imageWidth, imageHeight = getImageSize(app.mario)
+            drawImage(app.mario, 330, 320, width=imageWidth//5,
+            height=imageHeight//5, align='center')
+        elif app.chosenCharacter == app.toadette: 
+        # toadette
+            drawRect(30, 280, 310, 100, fill='pink', border='black')
+            imageWidth, imageHeight = getImageSize(app.toadette)
+            drawImage(app.toadette, 330, 315, width=imageWidth//10,
+            height=imageHeight//10, align='center')
+        
+        elif app.chosenCharacter == app.koopaTroopa:
+        # Koopa Troopa
+            drawRect(30, 280, 310, 100, fill='yellow', border='black')
+            imageWidth, imageHeight = getImageSize(app.koopaTroopa)
+            drawImage(app.koopaTroopa, 325, 310, width=imageWidth//15,
+            height=imageHeight//15, align='center')
+        # drawRect(10, 340, 225, 100, fill = 'blue')
+        # drawLabel('YOUR WALLET:', 122, 360, fill = 'white', size = 20)
+        # drawCircle(90, 400, 20, fill = 'yellow', border = 'black')
+        # drawLabel(app.numberOfCoins, 140, 400, fill = 'white', size = 20)
+    if app.gameIsOver:
+        imageWidth, imageHeight = getImageSize(app.wonGameBackground)
+        drawImage(app.wonGameBackground, 0, 0, width=750,
+        height=750)
+    # if app.showMarioGIF: 
+    #     sprite = app.marioGIF[app.spriteCounter]
+    #     imageWidth, imageHeight = getImageSize(sprite)
+    #     drawImage(sprite, app.spriteX, app.spriteY, width = imageWidth, height = imageHeight, align='center')
+    # if app.gameIsOver: 
+    #     sprite = app.gameIsOver[app.spriteCounter]
+    #     imageWidth, imageHeight = getImageSize(sprite)
+    #     drawImage(sprite, app.spriteX, app.spriteY, width = imageWidth, height = imageHeight, align='center')
+
+def onMousePress(app, mouseX, mouseY):
+    if app.gameHasStarted:
+        if app.enterValue == False:
+            selectedCell = getCell(app, mouseX, mouseY)
+            if selectedCell != None:
+                if selectedCell == app.selection:
+                    app.selection = None
+                else:
+                    app.selection = selectedCell
+            app.currentGuess = None
+        if 100 <= mouseX <= 275 and 15 <= mouseY <= 55: 
+            app.openShop = True
+            app.sudokuPage = False
+            app.enterValue = False
+        if 300 <= mouseX <= 475 and 15 <= mouseY <= 55: 
+            app.directionsWhenGameStartedPartOne = True 
+            app.sudokuPage = False
+            app.enterValue = False
+        if app.directionsWhenGameStartedPartTwo: 
+            app.directionsWhenGameStartedPartOne = False
+            if 25 <= mouseX <= 228 and 638 <= mouseY <= 722: 
+                app.sudokuPage = True 
+                app.directionsWhenGameStartedPartTwo = False
+                app.enterValue = False
+        if app.openShop:
+            if 25 <= mouseX <= 228 and 638 <= mouseY <= 722: 
+                app.sudokuPage = True 
+                app.openShop = False
+                app.shopMessage = None
+            if 487 <= mouseX <= 718 and 340 <= mouseY <= 400: 
+                if app.numberOfCoins >= 300: 
+                    app.numberOfCoins -= 300
+                    app.numberOfUndos += 1
+                    app.shopMessage = None
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
+            if 487 <= mouseX <= 718 and 485 <= mouseY <= 545: 
+                if app.numberOfCoins >= 500: 
+                    app.numberOfCoins -= 500 
+                    app.shopMessage = None
+                    if app.numberOfIncorrect > 0: 
+                        app.numberOfIncorrect -= 1
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
+            if 487 <= mouseX <= 718 and 640 <= mouseY <= 700: 
+                if app.numberOfCoins >= 250: 
+                    app.numberOfCoins -= 250
+                    app.numberOfHints += 1
+                    app.shopMessage = None
+                else: 
+                    app.shopMessage = '''You don't have enough coins to buy this!'''
+        if 50 <= mouseX <= 225 and 705 <= mouseY <= 735:
+            app.showLegals = not app.showLegals
+        if 250 <= mouseX <= 425 and 705 <= mouseY <= 735:
+            app.currentState.board = solveSudoku(app, app.currentState.board, app.currentState.legals)
+            app.gameIsOver = True
+        if 450 <= mouseX <= 700 and 705 <= mouseY <= 735:
+            app.toggleNormal = not app.toggleNormal
+            app.toggleLegals = not app.toggleLegals
+            app.numberOfToggles += 1
+        if 712 <= mouseX <= 738 and 188 <= mouseY <= 212:
+            if app.numberOfUndos > 0:
+                app.numberOfUndos -= 1
+                app.currentState = app.statesList[app.numberOfMoves - 1]
+    else:
+        if app.playScreen: 
+            if (225 <= mouseX <= 500 and 
+                315 <= mouseY <= 475):  
+                app.directionsPartOne = True 
+                app.playScreen = False
+                app.showMarioGIF = True
+        if app.characterSelectScreen:
+            if distance(mouseX, mouseY, 243, 508) <= 80: 
+                app.chosenCharacter = app.rosalina
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 520, 508) <= 80: 
+                app.chosenCharacter = app.toadette 
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 107, 660) <= 80: 
+                app.chosenCharacter = app.mario
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 385, 660) <= 80: 
+                app.chosenCharacter = app.koopaTroopa
+                app.characterScreenMessage = None
+            elif distance(mouseX, mouseY, 630, 660) <= 80: 
+                app.chosenCharacter = app.luigi
+                app.characterScreenMessage = None
+            if (227 <= mouseX <= 515 and 48 <= mouseY <= 150 
+                and app.chosenCharacter != None): 
+                app.chooseDifficultyScreen = True 
+                app.sudokuPage = True
+                app.characterSelectScreen = False 
+                app.directionsPartOne = False 
+                app.directionsPartTwo = False
+            elif (227 <= mouseX <= 515 and 48 <= mouseY <= 150 
+                and app.chosenCharacter == None):
+                app.characterScreenMessage = 'You need to choose a character to continue!'
+        if app.chooseDifficultyScreen: 
+            if 125 <= mouseX <= 350 and 150 <= mouseY <= 250: 
+                app.chosenLevel = 'easy'
+                getChosenBoard(app)
+                # app.solution = solveSudoku(app, copy.deepcopy(app.currentState.board), copy.deepcopy(app.currentState.legals))
+                # print(testBacktracker(app, filters = []))
+                app.gameHasStarted = True
+                app.sudokuPage = True 
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+                # app.sudokuPlaySound.play()
+                # app.starterSound.pause()
+            elif 400 <= mouseX <= 625 and 150 <= mouseY <= 250: 
+                app.chosenLevel = 'medium'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+                app.sudokuPlaySound.play()
+                app.starterSound.pause()
+            elif 125 <= mouseX <= 350 and 300 <= mouseY <= 400: 
+                app.chosenLevel = 'hard'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+                app.sudokuPlaySound.play()
+                app.starterSound.pause()
+            elif 400 <= mouseX <= 625 and 300 <= mouseY <= 400: 
+                app.chosenLevel = 'expert'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+                app.sudokuPlaySound.play()
+                app.starterSound.pause()
+            elif 265 <= mouseX <= 485 and 450 <= mouseY <= 550: 
+                app.chosenLevel = 'evil'
+                getChosenBoard(app)
+                app.gameHasStarted = True 
+                app.sudokuPage = True
+                app.chooseDifficultyScreen = False 
+                app.characterSelectScreen = False
+                app.directionsPartOne = False
+                app.directionsPartTwo = False
+                app.sudokuPlaySound.play()
+                app.starterSound.pause()
+
+def onKeyPress(app, key):
+    if app.gameHasStarted:
+        if app.toggleNormal:
+            if app.selection != None:
+                app.enterValue = True
+                if key != '0' and key.isdigit() and key != 'enter' and key != 'backspace': 
+                    app.currentGuess = int(key)
+                if key == 'backspace': 
+                    app.wrongCell = None
+                    app.currentGuess = None
+                    app.enterValue = False
+                if key == 'enter' and app.currentGuess != None:
+                    app.currentState.board[app.selection[0]][app.selection[1]] = app.currentGuess
+                    if not isLegalSudoku(app.currentState.board): ###
+                    # if app.currentState.board[app.selection[0]][app.selection[1]] != app.solution[app.selection[0]][app.selection[1]]:
+                        app.currentState.board[app.selection[0]][app.selection[1]] = 0
+                        app.numberOfIncorrect += 1
+                        app.wrongCell = (app.selection[0], app.selection[1])
+                        return
+                    app.numberOfMoves += 1
+                    app.numberOfCoins += 50
+                    app.userInputtedValues.add((app.selection[0], app.selection[1]))
+                    app.currentState.ban(app.selection[0], app.selection[1], app.currentState.board[app.selection[0]][app.selection[1]])
+                    app.currentState.legals[app.selection[0]][app.selection[1]] = set()
+                    app.statesList.append(app.currentState)
+                    app.currentState = copy.deepcopy(app.currentState)
+                    checkGameOver(app)
+                    app.enterValue = False
+        elif app.toggleLegals:
+            if app.selection != None:
+                app.enterValue = True
+                if key != '0' and key.isdigit() and key != 'enter' and key != 'backspace': 
+                    app.currentState.legals[app.selection[0]][app.selection[1]].add(int(key))
+                    app.previousLegalsKey = key
+                    app.enterValue = False
+                if key == 'backspace':
+                    if int(app.previousLegalsKey) in app.currentState.legals[app.selection[0]][app.selection[1]]:
+                        app.currentState.legals[app.selection[0]][app.selection[1]].remove(int(app.previousLegalsKey))
+                    app.enterValue = False
+        if key == 's':
+            app.enterValue = False
+            for row in range(len(app.currentState.legals)):
+                for col in range(len(app.currentState.legals[0])):
+                    if len(app.currentState.legals[row][col]) == 1:
+                        app.currentState.board[row][col] = int(app.currentState.legals[row][col].pop())
+                        app.numberOfMoves += 1
+                        app.currentState.ban(row, col, app.currentState.board[row][col])
+                        app.currentState.legals[row][col] = set()
+                        app.statesList.append(app.currentState)
+                        app.currentState = copy.deepcopy(app.currentState)
+                        app.enterValue = False
+                        return
+        elif key == 'S':
+            app.enterValue = False
+            for row in range(len(app.currentState.legals)):
+                for col in range(len(app.currentState.legals[0])):
+                    if len(app.currentState.legals[row][col]) == 1:
+                        app.currentState.board[row][col] = int(app.currentState.legals[row][col].pop())
+                        app.numberOfMoves += 1
+                        app.currentState.ban(row, col, app.currentState.board[row][col])
+                        app.currentState.legals[row][col] = set()
+                        app.enterValue = False
+            app.statesList.append(app.currentState)
+            app.currentState = copy.deepcopy(app.currentState)
+        elif key == 'a':
+            if app.numberOfHints > 0:
+                app.enterValue = False
+                if not app.hint1Level1:
+                    app.hint1Level1 = True
+                    app.numberOfHints -= 1
+                    hint1Level1(app)
+                else:
+                    app.enterValue = False
+                    app.hint1Level1 = False
+                    if app.hint1Cell != None:
+                        app.currentState.tempLegalsHint1Level1[app.hint1Cell[0]][app.hint1Cell[1]] = set()
+                    app.hint1Cell = None
+                    hint1Level1(app)
+        elif key == 'b':
+            if app.numberOfHints > 0:
+                app.enterValue = False
+                if not app.hint1Level2:
+                    app.hint1Level2 = True
+                    app.numberOfHints -= 1
+                    hint1Level2(app)
+                else:
+                    app.enterValue = False
+                    app.hint1Level2 = False
+                    hint1Level2(app)
+        elif key == 'c':
+            if app.numberOfHints > 0:
+                app.enterValue = False
+                if not app.hint2Level1:
+                    app.hint2Level1 = True
+                    app.numberOfHints -= 1
+                    hint2Level1(app)
+                else:
+                    app.enterValue = False
+                    app.hint2Level1 = False
+                    app.hint2Cells = None
+                    hint2Level1(app)
+        elif key == 'd':
+            if app.numberOfHints > 0:
+                app.enterValue = False
+                if not app.hint2Level2:
+                    app.hint2Level2 = True
+                    app.numberOfHints -= 1
+                    hint2Level2(app)
+                else:
+                    app.enterValue = False
+                    app.hint2Level2 = False
+                    hint2Level2(app)
+        elif key == 'p': 
+            imageSize = (app.boardWidth, app.boardHeight)
+            currentBoard = makePilImageForCurrBoard(app, 9, 9, imageSize)
+            solutionBoard  = makePilImageForSolution(app, 9, 9, imageSize)
+            # convert to CMUImage for drawing:
+            app.currentBoardImage = CMUImage(currentBoard)
+            app.solutionImage = CMUImage(solutionBoard)
+            saveImagesAsPdf(app)
+        if app.directionsWhenGameStartedPartOne:
+            if key == 'n':
+                app.directionsWhenGameStartedPartTwo = True
+                app.directionsWhenGameStartedPartOne = False 
+                app.sudokuPage = False
+    else: 
+        if app.directionsPartOne: 
+            if key == 'n': 
+                app.directionsPartTwo = True
+                app.directionsPartOne = False 
+                app.showMarioGIF = True
+        if app.directionsPartTwo: 
+            if key == 'c': 
+                app.characterSelectScreen = True
+                app.directionsPartOne = False
+                app.directionsPartTwo = False 
+                app.showMarioGIF = False
+
+# HINT FUNCTIONS
+
+def hint1Level1(app):
+    if app.hint1Level1:
+        app.hint1Cell = app.currentState.getHint1Cell(app.currentState.tempLegalsHint1Level1)
+        if app.hint1Cell == None:
+            app.hint1Level1 = not app.hint1Level1
+
+def hint1Level2(app):
+    if app.hint1Level2:
+        app.hint1Cell = app.currentState.getHint1Cell(app.currentState.tempLegalsHint1Level2)
+        if app.hint1Cell != None:
+            row, col = app.hint1Cell[0], app.hint1Cell[1]
+            app.hint1Level2Value = app.currentState.tempLegalsHint1Level2[row][col].pop()
+    else:
+        if app.hint1Cell != None:
+            row, col = app.hint1Cell[0], app.hint1Cell[1]
+            app.currentState.board[row][col] = app.hint1Level2Value
+            app.currentState.ban(row, col, app.currentState.board[row][col])
+            app.currentState.tempLegalsHint1Level2[row][col] = set()
+
+def hint2Level1(app):
+    if app.hint2Level1:
+        values, app.hint2Cells = app.currentState.getHint2Level1()
+
+def hint2Level2(app):
+    if app.hint2Level2:
+        values, app.hint2Cells = app.currentState.getHint2Level2()
+
+def checkGameOver(app):
+    rows, cols = len(app.currentState.board), len(app.currentState.board[0])
+    for row in range(app.rows):
+        for col in range(app.cols):
+            if app.currentState.board[row][col] == 0:
+                return False
+                break
+        app.gameIsOver = True
+        break
+    return True
+
+# SUDOKU LEGALITY FUNCTIONS
+
+# areLegalValues function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
+def areLegalValues(L): 
+    seen = [] 
+    for i in range(len(L)): 
+        if (type(L[i])) != int:
+            return False 
+        if L[i] < 0 or L[i] > len(L): 
+            return False 
+        if L[i] != 0 and L[i] in seen: 
+            return False 
+        seen.append(L[i])
+    return True
+ 
+# isLegalRow function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
+def isLegalRow(grid, row): 
+    return areLegalValues(grid[row])
+
+# isLegalCol function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
+def isLegalCol(grid, col): 
+    rows = len(grid)
+    values = [grid[row][col] for row in range(rows)]
+    return areLegalValues(values)
+
+# isLegalBlock function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
+def isLegalBlock(grid, block): 
+    blockSize = rounded(len(grid)**0.5)
+    startRow = block//blockSize * blockSize
+    startCol = block % blockSize * blockSize
+    values = [] 
+    for drow in range(blockSize): 
+        for dcol in range(blockSize): 
+            row, col = startRow + drow, startCol + dcol 
+            values.append(grid[row][col])
+    return areLegalValues(values)
+
+# isLegalSudoku function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/exercise/4745
+def isLegalSudoku(grid):
+    rows, cols = len(grid), len(grid[0])
+    for row in range(rows): 
+        if not isLegalRow(grid, row): 
+            return False 
+    for col in range(cols): 
+        if not isLegalCol(grid, col): 
+            return False
+    blocks = rows 
+    for block in range(blocks): 
+        if not isLegalBlock(grid, block): 
+            return False 
+    return True
+
+# (FASTER) BACKTRACKER
+
+def solveSudoku(app, board, legals):
+    allRegions = app.currentState.getAllRegions()
+    for row in range(len(allRegions)):
+        allRegions[row] = set(allRegions[row])
+    regionsDict = dict()
+    for region in allRegions:
+        for cell in region:
+            if cell not in regionsDict:
+                if legals[cell[0]][cell[1]] != set():
+                    tempList = []
+                    tempRow = set(app.currentState.getRowRegion(board, cell[0])[1])
+                    tempList.append(tempRow)
+                    tempCol = set(app.currentState.getColRegion(board, cell[1])[1])
+                    tempList.append(tempCol)
+                    tempBlock = set(app.currentState.getBlockRegion(board, cell[0], cell[1])[1])
+                    tempList.append(tempBlock)
+                    regionsDict[cell] = tempList
+    rows, cols = len(board), len(board[0]) 
+    rowColLegalsList = []
+    for row in range(rows):
+        for col in range(cols): 
+            if legals[row][col] != set(): 
+                rowColLegalsList.append((len(legals[row][col]), legals[row][col], row, col))
+    rowColLegalsList.sort()
+    rowColLegalsList.reverse()
+    return sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+
+def sudokuSolver(board, legals, rowColLegalsList, regionsDict):
+    if rowColLegalsList == []:
+        return board
+    else:
+        legalSetLength, legalsSet, row, col = rowColLegalsList[-1]
+        for num in legalsSet:
+            if len(legalsSet) == 1:
+                board[row][col]  = num
+                rowColLegalsList.pop()
+                tuplesToRemoveFrom = []
+                for cellRegion in regionsDict[(row, col)]: 
+                    for cell in cellRegion: 
+                         for tupleSet in rowColLegalsList:
+                             if (tupleSet[2], tupleSet[3]) == cell: 
+                                if num in tupleSet[1]: 
+                                    tupleSet[1].remove(num) 
+                                    tuplesToRemoveFrom.append(tupleSet)   
+                solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                if solution != None:
+                    return solution
+                board[row][col] = 0
+                rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                for t in tuplesToRemoveFrom:
+                    for tupleSet in rowColLegalsList:
+                        if t == tupleSet:
+                            tupleSet[1].add(num)
+            else: 
+                if isLegalSudoku(board):
+                    board[row][col]  = num
+                    rowColLegalsList.pop()
+                    tuplesToRemoveFrom = []
+                    for cellRegion in regionsDict[(row, col)]: 
+                        for cell in cellRegion: 
+                            for tupleSet in rowColLegalsList: 
+                                if (tupleSet[2], tupleSet[3]) == cell: 
+                                    if num in tupleSet[1]: 
+                                        tupleSet[1].remove(num) 
+                                        tuplesToRemoveFrom.append(tupleSet)   
+                    solution = sudokuSolver(board, legals, rowColLegalsList, regionsDict)
+                    if solution != None:
+                        return solution
+                    board[row][col] = 0
+                    rowColLegalsList.append((legalSetLength, legalsSet, row, col))
+                    for t in tuplesToRemoveFrom:
+                        for tupleSet in rowColLegalsList:
+                            if t == tupleSet:
+                                tupleSet[1].add(num)
+        return None
+
+# BOARD DRAWING FUNCTIONS
+
+# getCell function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+def getCell(app, x, y):
+    dx = x - app.boardLeft
+    dy = y - app.boardTop
+    cellWidth, cellHeight = getCellSize(app)
+    row = math.floor(dy / cellHeight)
+    col = math.floor(dx / cellWidth)
+    if (0 <= row < app.rows) and (0 <= col < app.cols):
+        return (row, col)
+    else:
+        return None
+    
+# drawBoard function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+def drawBoard(app):
+    for row in range(app.rows):
+        for col in range(app.cols):
+            drawCell(app, row, col)  
+
+# drawBoardBorder function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+def drawBoardBorder(app):
+  # draw the board outline (with double-thickness):
+  drawRect(app.boardLeft, app.boardTop, app.boardWidth, app.boardHeight,
+           fill=None, border='black',
+           borderWidth=2*app.cellBorderWidth)
+
+# drawCell function modified from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+def drawCell(app, row, col):
+    cellLeft, cellTop = getCellLeftTop(app, row, col)
+    cellWidth, cellHeight = getCellSize(app)
+    if app.currentState.board[row][col] == 0:
+        if app.hint1Level1 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else 'white'
+        elif app.hint1Level2 == True and app.hint1Cell == (row, col):
+            color = 'yellow' if (row, col) == app.hint1Cell else 'white'
+        elif app.hint2Level1 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else 'white'
+        elif app.hint2Level2 == True and app.hint2Cells != None:
+            color = 'yellow' if (row, col) in app.hint2Cells else 'white'
+        else:
+            color = rgb(207, 159, 255) if (row, col) == app.selection else 'white'
+            if (row, col) == app.wrongCell:
+                color = 'red'
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=color, border='black', borderWidth=app.cellBorderWidth)
+        if app.hint1Level2 == True and app.hint1Cell == (row, col):
+            drawLabel(app.hint1Level2Value, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width // 20, fill = 'black', align='center')
+    else:
+        if (row, col) not in app.userInputtedValues:
+            color = 'lightGray'
+        else: color = None
+        drawRect(cellLeft, cellTop, cellWidth, cellHeight, fill=color, border='black', borderWidth=app.cellBorderWidth)
+    if app.currentState.board[row][col] != 0:
+        drawLabel(app.currentState.board[row][col], cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width//20, fill = 'black', align='center')
+    else:
+        if (row, col) == app.selection and app.currentGuess != None and app.currentState.board[row][col] == 0:
+            drawLabel(app.currentGuess, cellLeft + cellWidth//2, cellTop + cellHeight//2, size = app.width//20, fill = 'black', align='center')
+        else:
+            if app.showLegals:
+                if app.hint1Level1 == True or (app.hint1Cell != None and (row, col) != (app.hint1Cell[0], app.hint1Cell[1])) or app.hint1Cell == None:
+                    for num in app.currentState.legals[row][col]:
+                        if num == 1:
+                            drawLabel('1', cellLeft + app.width // 75, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 2:
+                            drawLabel('2', cellLeft + (app.width // 75)*3.5, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 3:
+                            drawLabel('3', cellLeft + (app.width // 75)*6, cellTop + app.width // 75, size = app.width // 50, fill = 'gray')
+                        elif num == 4:
+                            drawLabel('4', cellLeft + app.width // 75, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 5:
+                            drawLabel('5', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 6:
+                            drawLabel('6', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*3.5, size = app.width // 50, fill = 'gray')
+                        elif num == 7:
+                            drawLabel('7', cellLeft + app.width // 75, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                        elif num == 8:
+                            drawLabel('8', cellLeft + (app.width // 75)*3.5, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+                        elif num == 9:
+                            drawLabel('9', cellLeft + (app.width // 75)*6, cellTop + (app.width // 75)*6, size = app.width // 50, fill = 'gray')
+
+# getCellLeftTop function used directly from CMU CS Academy 
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+
+def getCellLeftTop(app, row, col):
+    cellWidth, cellHeight = getCellSize(app)
+    cellLeft = app.boardLeft + col * cellWidth
+    cellTop = app.boardTop + row * cellHeight
+    return (cellLeft, cellTop)
+
+# getCellSize function used directly from CMU CS Academy
+# https://cs3-112-f22.academy.cs.cmu.edu/notes/4187
+def getCellSize(app):
+    cellWidth = app.boardWidth / app.cols
+    cellHeight = app.boardHeight / app.rows
+    return (cellWidth, cellHeight)
+
+def main():
+    runApp(750, 750)
+
+main()
